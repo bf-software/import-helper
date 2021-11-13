@@ -1,0 +1,6 @@
+# this simply marks this as the top-most EditorConfig file
+# (if this is not here, your editor will continue looking for mode .editorconfig files in all of the parent folders.)
+root = true
+
+[*]
+end_of_line = lf

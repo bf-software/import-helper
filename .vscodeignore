@@ -1,0 +1,9 @@
+# start by ignoring everything
+*
+*/**
+
+# only include these in the .vsix
+!out-bundle/**/!(*.map)
+!LICENSE.md
+!package.json
+!README.md

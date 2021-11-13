@@ -1,0 +1,141 @@
+{
+	"name": "import-helper",
+	"publisher": "bf-software",
+	"displayName": "Import Helper",
+	"description": "quickly add imports for modules and symbols to the top of your code (for .ts, .js, .tsx, .jsx, & .svelte)",
+	"version": "0.7.0",
+	"icon": "out-bundle/images/BF Software/icon.png",
+	"engines": {
+		"vscode": "^1.62.0"
+	},
+	"repository": {
+		"url": "https://github.com/bf-software/import-helper/blob/main/",
+		"type": "git"
+	},
+	"categories": [
+		"Other"
+	],
+	"activationEvents": [
+		"onStartupFinished",
+		"onCommand:import-helper.addImport",
+		"onCommand:import-helper.goToImports"
+	],
+	"main": "./out-bundle/extensionEntryPoint.js",
+	"contributes": {
+		"configuration": {
+			"title": "Import Helper",
+			"properties": {
+				"import-helper.paths.exclude": {
+					"type": "string",
+					"scope": "window",
+					"default": "out, build",
+					"markdownDescription": "List paths to be excluded when looking for your project's modules. Start a path with a forward slash to start from the root of your workspace, otherwise exclusions are considered to reside anywhere in the path.\n\n&nbsp;\n\nFor example: `/out, test` will exclude `<workspace root>/out`, but not `<workspace root>/whatever/out`.  It will also exclude any folder named `test` in your entire hierarchy. There is no need to add `node_modules` as it is always excluded."
+				},
+				"import-helper.extentions.additional": {
+					"type": "string",
+					"scope": "window",
+					"default": "",
+					"markdownDescription": "List additional extensions to allow in import statements. For example, React with Webpack allows `css` files to be imported directly into your code. (format: .ext1, .ext2, etc...)"
+				}
+			}
+		},
+		"commands": [
+			{
+				"command": "import-helper.addImport",
+				"title": "Import Helper: Add Import"
+			},
+			{
+				"command": "import-helper.goToImports",
+				"title": "Import Helper: Go to Imports"
+			},
+			{
+				"command": "import-helper.goBackDown",
+				"title": "Import Helper: Go to Imports"
+			},
+			{
+				"command": "import-helper.openModule",
+				"title": "Import Helper: Open Module"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "import-helper.addImport",
+				"key": "Alt+F11"
+			},
+			{
+				"command": "import-helper.addImportByModule"
+			},
+			{
+				"command": "import-helper.addImportBySymbol"
+			},
+			{
+				"command": "import-helper.openModule",
+				"key": "Alt+O"
+			},
+			{
+				"command": "import-helper.openModuleByModule"
+			},
+			{
+				"command": "import-helper.openModuleBySymbol"
+			},
+			{
+				"command": "import-helper.goToImports",
+				"key": "Ctrl+Shift+Up",
+				"mac": "Shift+Cmd+Up"
+			},
+			{
+				"command": "import-helper.goBackDown",
+				"key": "Ctrl+Shift+Down",
+				"mac": "Shift+Cmd+Down"
+			},
+			{
+				"command": "import-helper.showReferences",
+				"key": "Alt+R"
+			}
+		]
+	},
+	"scripts": {
+		"dev-tsc-compile": "rm -rf out/ && tsc -p ./ && cp -r src/images/ out/",
+		"dev-tsc-watch": "tsc -watch -p ./",
+		"dev-mocha-report": "echo \"visit http://localhost:8080/\" && http-server \"./out/test/results/\" -s",
+		"dev-webpack-build": "webpack --config ./webpack.config.mjs | less -f -r",
+		"dev-webpack-watch": "webpack --config ./webpack.config.mjs --watch",
+		"prod-webpack-build": "cross-env NODE_ENV=production webpack --config ./webpack.config.mjs",
+		"prod-map-explorer": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map",
+		"prod-vsce-deploy": "vsce package --no-dependencies --out ./deploy"
+	},
+	"devDependencies": {
+		"@types/chai": "^4.2.22",
+		"@types/glob": "^7.1.4",
+		"@types/mocha": "^9.0.0",
+		"@types/node": "^16.11.7",
+		"@types/semver": "^7.3.9",
+		"@types/strip-comments": "^2.0.1",
+		"@types/vscode": "^1.61.0",
+		"@typescript-eslint/eslint-plugin": "^5.3.1",
+		"@typescript-eslint/parser": "^5.3.1",
+		"ava": "^3.15.0",
+		"chai": "^4.3.4",
+		"clean-terminal-webpack-plugin": "^3.0.0",
+		"clean-webpack-plugin": "^4.0.0",
+		"copy-webpack-plugin": "^9.1.0",
+		"cross-env": "^7.0.3",
+		"eslint": "^8.0.0",
+		"glob": "^7.2.0",
+		"http-server": "^14.0.0",
+		"meriyah": "^4.2.0",
+		"mocha": "^9.1.2",
+		"mochawesome": "^7.0.1",
+		"ts-loader": "^9.2.6",
+		"vsce": "^2.3.0",
+		"vscode-codicons": "^0.0.17",
+		"vscode-test": "^1.6.1",
+		"webpack": "^5.64.0",
+		"webpack-cli": "^4.9.1"
+	},
+	"dependencies": {
+		"semver": "^7.3.5",
+		"strip-comments": "^2.0.1",
+		"typescript": "^4.4.3"
+	}
+}
