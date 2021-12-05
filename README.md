@@ -1,6 +1,6 @@
 # Import Helper
 
-Lets you blast through the tedious chore of manually adding import statements to the top of your typescript, javascript, and svelte modules. The process is simple: first you pick your module, then you either pick your symbols or use an alias. You also get editor commands that let you quickly jump up to your import section and back down to your code. Import Helper supplements vscode's built-in auto-import mechanism. These commands are among my most often used while developing--I expect it will become the same for you!
+Lets you blast through the tedious chore of manually adding import statements to the top of your typescript, javascript, and svelte modules. The process is simple: first you find your module using the search, then you either pick a symbol or use an alias. You also get editor commands that let you quickly jump up to your import section and back down to your code. Import Helper supplements vscode's built-in auto-import mechanism. These commands are among my most often used while developing. I expect they will become the same for you!
 
 ![Import Helper Demo Animation](docs/screenShots/screenToGif/main-addSymbolImport.gif?raw=true)
 
@@ -59,27 +59,25 @@ There are two types of module paths that Import Helper can use when adding impor
 
 1. relative to the importing module
    - example: `import * as tools from './library/myTools'`
-2. relative to the project's `"baseURL"` path
+2. relative to the project's `baseUrl` and/or `paths` settings (aka, a "non-relative" path)
    - example: `import * as tools from 'myApp/library/myTools'`
 
-Import Helper tries to use the best option when creating imports.  It takes many things into consideration:
-
-- it first looks at the already existing imports and if there is a clear path style being used, it uses that style
-- then it looks at the `baseUrl` setting from `tsconfig.json / jsconfig.json`
-- finally, it looks at the preferences set in: JavaScript/TypeScript › Preferences: Import Module Specifier
+To determine which path to use, Import Helper looks at the following settings:
+* `TypeScript/JavaScript › Preferences: Import Module Specifier`
+* `Import-helper › Module Specifier: Path Style`
 
 ## Aren't VSCode's Auto-Imports Enough?  (Why use Import Helper?)
 
 the good (about vscode's built-in auto-import)
 
 + vscode quickly adds imports to accommodate pasted code snippets
-+ vscode nicely adds an import statement either automatically, or via vscode's `Quick Fix (Ctrl+. | ⌘.) `, but only after you've typed the entire symbol into your code
++ vscode nicely adds an import statement either automatically, or via vscode's `Quick Fix (Ctrl+. | ⌘.) `, based on symbols in your code.
 
 the bad (about vscode's built-in auto-import)
 
 - vscode works backwards: auto-import forces you to think about the symbol first, when it's often easier to think about the module first.
-- vscode has no incremental searching capability -- you always need to type the entire symbol you want to import
-- vscode can't auto-import using module aliases
+- vscode has no limited searching capability -- you usually need to type the entire symbol you want to import
+- vscode can't auto-import using module aliases, or symbol aliases
 
 Import Helper fills in the gaps left by vscode's auto-import features by allowing you to find the module you need first, and then letting you search a list of symbols from that module only.  It also lets you search for module and symbol aliases which facilitates the use of standard aliases throughout your code.
 
@@ -89,19 +87,19 @@ These commands are all accessible via buttons on the Import Helper toolbar.
 
 ### Show All ┊ `*`
 
-shows all modules, and symbols available to your project (only available in Step 1 of Import Helper)
+Shows all modules, and symbols available to your project (only available in Step 1 of Import Helper)
 
 ### Show All Modules ┊ `'*`
 
-shows all modules available to your project (only available in Step 1 of Import Helper)
+Shows all modules available to your project (only available in Step 1 of Import Helper)
 
 ### Show All Symbols ┊ `{*`
 
-shows all symbols already imported somewhere in your project (only available in Step 1 of Import Helper)
+Shows all symbols already imported somewhere in your project (only available in Step 1 of Import Helper)
 
 ### Open Module ┊ `Alt+O (⌥O on Mac)`
 
-opens the highlighted module in the editor. This is often a more direct route to the module's code than using vscode's `GoTo File... (Ctrl+P | ⌘P)` command, which can include many other files besides source modules.  Another benefit of opening modules this way is that you can find modules by their aliases or by the symbols your project actually uses.  Activating this command in Step 1 of `Add Import (Alt+F11 | ⌥I)` will open the selected module instead of importing it. This command can also be started directly from the editor, in which case it will open Import Helper in "Open Module" mode.  Then selecting a module using the enter key will immediately open it instead of importing it.
+Opens the highlighted module in the editor. This is often a more direct route to the module's code than using vscode's `GoTo File... (Ctrl+P | ⌘P)` command, which can include many other files besides source modules.  Another benefit of opening modules this way is that you can find modules by their aliases or by the symbols your project actually uses.  Activating this command in Step 1 of `Add Import (Alt+F11 | ⌥I)` will open the selected module instead of importing it. This command can also be started directly from the editor, in which case it will open Import Helper in "Open Module" mode.  Then selecting a module using the enter key will immediately open it instead of importing it.
 
 If a module is represented by multiple code files, Import Helper will ask to choose one of the files to open. For example, a module may have both a .d.ts and a .js file available.
 
@@ -109,29 +107,38 @@ Lastly, if the current project is not a Typescript or Javascript project, this w
 
 ### Show Module References ┊ `Alt+R (⌥R on Mac)`
 
-shows all of the modules in your project that use the selected module or symbol. This command can also be started directly from the editor, in which case it will open Import Helper in "Show Module References" mode.  Then selecting a module will then immediately open the list of references.
+Shows all of the modules in your project that use the selected module or symbol. This command can also be started directly from the editor, in which case it will open Import Helper in "Show Module References" mode.  Then selecting a module will then immediately open the list of references.
 
 ### Show Unused Modules
 
-shows the modules that are available to your project, but are not being imported by other modules.  This may identify superfluous modules being included unnecessarily in your project. Note that modules that serve as entry-points into your application will also appear here since they are not being referenced by other modules.
+Shows the modules that are available to your project, but are not being imported by other modules.  This may identify superfluous modules being included unnecessarily in your project. Note that modules that serve as entry-points into your application will also appear here since they are not being referenced by other modules.
 
 ## The Little Numbers: ❬5❭
 
-at the end of item lines in the search results, you may notice a number in angle brackets like `❬5❭`. This is the number of times the item is already being imported by the various modules of your project.  This value is used to sort the results when searching for modules and symbols.  The "most used" items tend to float to the top when searching. You may notice that it isn't exactly sorted by that number, because the sort also takes into consideration then length of the module name and how it is being imported. Modules that are only being used to import symbols may sort below popular symbols or even below other modules being imported as a whole modules.
+At the end of item lines in the search results, you may notice a number in angle brackets like `❬5❭`. This is the number of times the item is already being imported by the various modules of your project.  This value is used to sort the results when searching for modules and symbols.  The "most used" items tend to float to the top when searching. You may notice that it isn't exactly sorted by that number, because the sort also takes into consideration the length of the module name and how it is being imported. Longer module names and modules that are only being used to import symbols may sort below popular symbols or even below other modules being imported as a whole modules. Examples of whole module imports:
+* `import * as ex from 'example';`
+* `import ex from 'example';`
+* `import 'example';`
 
-## Extension Settings
+## Extension Commands
 
-this extension contributes the following settings:
+this extension contributes the following commands:
 
-* `import-helper.addImport`: launches the module picker
-* `import-helper.goToImports`: jumps your cursor to the import section
-* `import-helper.goBackDown`: jumps your cursor back to the original location in the code
-* `import-helper.openModule :` lets you open a module's source code in the editor
-* `import-helper.showReferences :` show a list of modules that use the selected module
-* `import-helper.showUnused :` shows modules that are not referenced by your project code
+* `import-helper.addImport`: ┊ `Alt+F11 (⌥F11 on Mac)`\
+launches the module picker
+* `import-helper.goToImports`: ┊ `Ctrl+Shift+Up (⇧⌘⭡ on Mac)`\
+jumps your cursor to the import section
+* `import-helper.goBackDown`: ┊ `Ctrl+Shift+Down (⇧⌘⭣ on Mac)`\
+jumps your cursor back to the original location in the code
+* `import-helper.openModule`: ┊ `Alt+O (⌥O on Mac)`\
+lets you open a module's source code in the editor
+* `import-helper.showReferences`: ┊ `Alt+R (⌥R on Mac)`\
+show a list of modules that use the selected module
+* `import-helper.showUnused`:\
+shows modules that are not referenced by your project code
 
 ## Release Notes
 
-### 0.5.0
+### 0.7.1
 
 initial release.

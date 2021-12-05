@@ -132,7 +132,7 @@ export class ProjectModuleResolver {
 
       // try the tsconfig.json->paths
       if (this.project.config?.paths.matchOnMatcher(anyModuleSpecifier)) {
-        for (let projectPath of this.project.config.paths.matchedMatcherPaths) {
+        for (let projectPath of this.project.config.paths.resultingMatchedMatcherPaths) {
           let parentPath = ss.extractPath(projectPath);
           let moduleFileName = ss.extractFileName(projectPath);
          await this.mainAlgorithm(parentPath, './'+moduleFileName);

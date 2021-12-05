@@ -39,7 +39,7 @@ There are 3 kinds of module specifiers:
 
 #### Basic Variable Rules
 
-All file paths for all platforms will use forward slashes.  Paths without file names (i.e. a path to a folder) will always end with a forward slash.
+All file paths for all platforms will use forward slashes.  Paths without file names (i.e. a paths to folders) will always end with a forward slash.
 
 #### Naming of Variables Containing File Names and Paths
 
@@ -67,8 +67,8 @@ All file paths for all platforms will use forward slashes.  Paths without file n
   - example: `systemSupport.ts`
   - example: `index.d.ts`
   - example: `electron`
-  
-  
+
+
 
 ### Defining and Mapping a Project's Modules
 
@@ -99,7 +99,8 @@ There are 2 main aspects of module resolution: 1. defining, and 2. mapping.
            import * as ss from 'src/common/systemSupport';
        for any module in the project, no matter what sub folder it's located in.
      ```
-   - `tsconfig.json | "compilerOptions.paths": "{"match1":[<path1>,<path2>,...], "match2":[...],...}"` - these settings create numerous "fallback" options for typescript to use to to find modules.  To use this, you specify one or more "match" strings.  When the `moduleSpecifier` matches a match string, TypeScript will look in all of the corresponding paths to see of the module can be found there. The asterisk in the match string stands in for wildcards.  The portion matched by the asterisk when finding the match string will be inserted into the corresponding paths.
+     By the way, I don't recommend using baseUrl as it can possibly override things in node_modules if you aren't careful.  Using the next option is better.
+   - `tsconfig.json | "compilerOptions.paths": "{"match1":[<path1>,<path2>,...], "match2":[...],...}"` - these settings create numerous "fallback" options for typescript to use to to find modules.  To use this, you specify one or more "match" strings.  When the `module specifier` matches a match string, TypeScript will look in all of the corresponding paths to see of the module can be found there. The asterisk in the match string stands in for wildcards.  The portion matched by the asterisk when finding the match string will be inserted into the corresponding paths.
    - ```
      example:
        if we have this structure:
@@ -109,7 +110,6 @@ There are 2 main aspects of module resolution: 1. defining, and 2. mapping.
          /project/importHelper/src/tools/strings.ts
        where tsconfig.json has these settings:
          { "compilerOptions": {
-             "baseUrl": ".",
              "paths": {
                "*": ["./src/common/*", "./src/tools/*"],
                "wow/*":["./src/tools/*"]
@@ -120,16 +120,16 @@ There are 2 main aspects of module resolution: 1. defining, and 2. mapping.
         can now also be this:
           import * as ss from 'systemSupport';
         for any module in the project, no matter what sub folder it's located in.
-     
+
      How this works:
-          our module specifier in the example above is 'systemSupport', so first, typescript checks in the BaseURL for 'systemSupport', which it doesn't find.  Then typescript looks at the first "paths" item which is '*'.  '*' means "for any moduleSpecifier", so then it takes the text matched by '*', which by definition is all of the module specifier, which, again is 'systemSupport', and merges it with the first path: './src/common/*' to form './src/common/systemSupport'.  Since './src/common/systemSupport' does exist, that's what typescript will use. However if it didn't exist, it would have tried './src/tools/systemSupport' before finally giving up and raising an error.
-     
+          our module specifier in the example above is 'systemSupport'. First, typescript woul'd check in the BaseURL for 'systemSupport', but `baseUrl` isn't defined, so it skips that. Then typescript looks at the first "paths" item which is '*'.  '*' means "for any moduleSpecifier", so then it takes the text matched by '*', which by definition is all of the module specifier, which, again is 'systemSupport', and merges it with the first path: './src/common/*' to form './src/common/systemSupport'.  Since './src/common/systemSupport' exists, that's what typescript will use. However if it didn't exist, it would have tried './src/tools/systemSupport' before finally giving up and raising an error.
+
       similarly, this import:
           import * as ss from '/project/importHelper/src/tools/strings';
      can now also be this:
           import * as ss from 'wow/strings';
         for any module in the project, no matter what sub folder it's located in.
-     
+
      How this works:
           our module specifier in the example above is 'wow/strings', so first, typescript checks in the BaseURL for 'wow/strings', which it doesn't find.  Then typescript looks at the first "paths" item which is '*'.  '*' means "for any moduleSpecifier", so then it takes the text matched by '*', which by definition is all of the module specifier, which, again is 'wow/strings', and merges it with the first path: './src/common/*' to form './src/common/wow/strings'.  Since './src/common/wow/strings' does NOT exist, typescript tries the next path in the '*' item to no avail.  Then typescript notices that 'wow/strings' is matched by 'wow/*', so it takes the part of 'wow/strings' that the * matched, which is 'strings' and merges it with the first path: './src/tools/*' forming './src/tools/strings'. Since './src/tools/strings' exists, that is used.
      ```
@@ -170,7 +170,7 @@ By default, all workspace folders are searched for modules during the loading pr
 
 #### Node Module Caching
 
-Modules offered by the node_modules folder are pulled in by leveraging vscode's built in completion mechanism.  When we need a list of node_module modules, we create a blank import statement at the top of the code like `import {} from '';`  Then position the cursor after the first quote in the empty module name and run `vscode.commands.executeCommand('vscode.executeCompletionItemProvider',...`  This will fill an array with all of the node_modules available to the code.  This list should be cached since it doesn't change very often.  The only way it changes is by adding or removing modules or dependencies from the project's `package.json`.  So-- if `package.json` changes, these node modules will need to be reloaded.
+Modules offered by the node_modules folder are pulled in by leveraging vscode's built in completion mechanism.  When we need a list of node_module modules, IH creates a blank import statement at the top of the code like `import {} from '';`  Then positions the cursor after the first quote in the empty module name and runs `vscode.commands.executeCommand('vscode.executeCompletionItemProvider',...`  This will fill an array with all of the node_modules available to the code.   The only way it changes is by adding or removing modules or dependencies from the project's `package.json`.  So-- if `package.json` changes, these node modules will need to be reloaded.
 
 !!! However, there is a problem with caching node modules, and that is: the user may activate Import Helper very early in the vscode loading process.  If that happens, vscode only returns a partial list of node_modules available.  A subsequent run will return more.  Until we can be sure that we are getting all modules, we can't cache them.  Luckily, getting the list of node modules is quite fast anyway.
 
@@ -188,5 +188,17 @@ If the cursor is here `ss.|`, then `"ss"` is the possible alias.  When Import He
 
 ### webviews --> treeview
 
-change the webview to use a treeview and possibly the references treeview for showing References and Unused References.
+change the webview to use a treeview and (possibly the references treeview) for showing References and Unused References instead of an HTML panel.
+
+### open module - source code options
+
+when the open module command is used to open a module, if there are multiple source code options (like a .d.ts, .mjs, or .js files) that are associated with the module, IH will provide a list to choose from.  This list comes from complicated reverse module resolution code that looks at all the crazy settings in `package.json`.  Currently the code that analyzes the `main`, `types`, `typesVersons` and `exports` entries is a little weak (as I don't fully understand all of the mapping possibilites made available by those features).
+
+### awaiting proposed `QuickPick `features
+
+once the proposed quickpick item button features are released ( https://github.com/microsoft/vscode/issues/88716 ), use them instead of the toolbar buttons for "open" and "show references"
+
+### determine default  exports for  modules
+
+IH should limit the full module import options on the bottom of the symbol search based on what is being exported by the module.  For example, if there is only one default export, and no symbols (like for common JS modules), there shouldn't be a `import * as xxxx from 'yyyy';` option, as that can't be used.  Also if there is default export, there shouldn't be an `import xxxx from 'yyyy';`. The problem is that the only way to do this is to actually parse the module completely (and possibly other modules if the module has any re-export statements like:  `export * from 'zzzz';` )
 

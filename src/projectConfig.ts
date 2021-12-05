@@ -18,7 +18,7 @@ export class ProjectConfig {
    * node_modules folder.  If the baseUrl setting itself is a relative path, the absolute baseUrl will be calculated
    * relative to the containing tsconfig/jsconfig.
    */
-  public baseURL: string = '.';
+  public baseUrl: string = '.';
 
   /**
    * in the future baseURL will be decoupled from paths so that paths can exist without baseURL.
@@ -29,7 +29,7 @@ export class ProjectConfig {
    * but it will stop imports from being able to reference non-`node_modules` modules by omitting the dot
    * or slash in the beginning of the module specifier.
    */
-  public baseURLExists: boolean = false;
+  public baseUrlExists: boolean = false;
 
   /**
    * comes from the paths setting in tsconfig/jsconfig.  "paths" is an unfortunate name for this setting because
@@ -169,10 +169,10 @@ export class ProjectConfig {
     (global as any).$tsConfig = this;
     (global as any).$projects = projects;
 
-    this.baseURL = parsedConfig.options.baseUrl ?? '';
-    this.baseURLExists = this.baseURL != '' && ss.fileExistsSync(this.baseURL);
+    this.baseUrl = parsedConfig.options.baseUrl ?? '';
+    this.baseUrlExists = this.baseUrl != '' && ss.fileExistsSync(this.baseUrl);
 
-    let matcherBaseURL = ss.ifBlank(this.baseURL, this.project.projectPath);
+    let matcherBaseURL = ss.ifBlank(this.baseUrl, this.project.projectPath);
     this.paths.clear();
     if (parsedConfig.options.paths)
       for (let matcher in parsedConfig.options.paths) {
@@ -200,17 +200,17 @@ export class ProjectConfig {
   }
 }
 class RootDirs extends cs.FfArray<string> {
-  public virtualModuleSpecifier: string = '';
+  public resultingVirtualModuleSpecifier: string = '';
 
   /**
    * if @param absoluteModuleSpecifier is contained by one of the dirs, this returns true, and sets
    * the @member virtualModuleSpecifier to the calculculated virtual module specifier
    */
   public inVirtualDirectory(absoluteModuleSpecifier: string): boolean {
-    this.virtualModuleSpecifier = '';
+    this.resultingVirtualModuleSpecifier = '';
     for (let path of this) {
       if (ss.startsWith(absoluteModuleSpecifier, path)) {
-        this.virtualModuleSpecifier = './' + absoluteModuleSpecifier.substr(path.length);
+        this.resultingVirtualModuleSpecifier = './' + absoluteModuleSpecifier.substr(path.length);
         return true;
       }
     }
@@ -227,26 +227,26 @@ class Paths extends cs.FfMap<string, string[]> {
   /**
    * this is set if @member matchOnMatcherPath() returns true
    */
-  public matchedModuleSpecifier: string = '';
+  public resultingMatchedModuleSpecifier: string = '';
 
   /**
    * this is set if @member matchOnMatcher() returns true
    */
-  public matchedMatcherPaths: string[] = [];
+  public resultingMatchedMatcherPaths: string[] = [];
 
   /**
    * returns true and sets `matchedPath` if a path match could be made from the `absoluteModuleSpecifier`
    */
   public matchOnMatcherPath(absoluteModuleSpecifier: string): boolean {
-    this.matchedModuleSpecifier = '';
+    this.resultingMatchedModuleSpecifier = '';
     for (let [matcher, matcherPaths] of this.entries()) {
       for (let matcherPath of matcherPaths) {
         let matcherPathRegEx = ss.escapeRegex(matcherPath).replace('\\*', '(.*)'); // "c:/proj/src/*" --> "c:\/proj\/src\/(.*)"
         let matches = absoluteModuleSpecifier.match(matcherPathRegEx);
         if (matches) {
-          this.matchedModuleSpecifier = matches[1] ?? '';
-          if (!ss.isBlank(this.matchedModuleSpecifier)) {
-            this.matchedModuleSpecifier = matcher.replace('*', this.matchedModuleSpecifier);
+          this.resultingMatchedModuleSpecifier = matches[1] ?? '';
+          if (!ss.isBlank(this.resultingMatchedModuleSpecifier)) {
+            this.resultingMatchedModuleSpecifier = matcher.replace('*', this.resultingMatchedModuleSpecifier);
             return true;
           }
         }
@@ -259,17 +259,17 @@ class Paths extends cs.FfMap<string, string[]> {
    * returns true and sets @member matchedMatcherPaths if a set of possible paths could be made from the @param moduleSpecifier
    */
   public matchOnMatcher(moduleSpecifier: string): boolean {
-    this.matchedMatcherPaths = [];
+    this.resultingMatchedMatcherPaths = [];
     for (let [matcher, matcherPaths] of this.entries()) {
       let matcherRegEx = ss.escapeRegex(matcher).replace('\\*', '(.*)'); // "src/*" --> "src\/(.*)"
       let matches = moduleSpecifier.match(matcherRegEx);
       if (matches) {
-        this.matchedModuleSpecifier = matches[1] ?? '';
+        this.resultingMatchedModuleSpecifier = matches[1] ?? '';
         for (let matcherPath of matcherPaths)
-          this.matchedMatcherPaths.push(matcherPath.replace('*', this.matchedModuleSpecifier));
+          this.resultingMatchedMatcherPaths.push(matcherPath.replace('*', this.resultingMatchedModuleSpecifier));
       }
     }
-    return this.matchedMatcherPaths.length > 0;
+    return this.resultingMatchedMatcherPaths.length > 0;
   }
 
 }

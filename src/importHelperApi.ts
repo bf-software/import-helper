@@ -229,7 +229,7 @@ export class ImportHelperApi {
 		    white-space: pre-wrap;
 			}
 		`;
-		quickViewPanel.descriptionHtml = `<div class="note">note: ambient modules as well as ones that are entry points into your app will appear here as well.</div>`;
+		quickViewPanel.descriptionHtml = `<div class="note">note: ambient modules and entry points into your app will appear here as well.</div>`;
     quickViewPanel.show();
 
   }

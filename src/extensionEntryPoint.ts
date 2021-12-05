@@ -12,7 +12,8 @@
  *  - all paths end with a forward slash
  *    - `/` means the root directory in linux
  *    - `c:/` means the root of the c drive in windows
- *    - `/home/user1/` refers to the `user1` directory, not `/home/user1`
+ *    - `/home/user1/` refers to the `user1` directory
+ *      (`/home/user1` -- without the ending `/` would refer to a file called "user1" in the home directory)
  *  - all file extensions start with a dot
  *    - `let typescriptExt = '.ts'`, is correct, but not this: `let typescriptExt = 'ts';`
  *
@@ -34,12 +35,13 @@ import * as vscode from 'vscode';
 import { ImportHelperUi, IHMode } from './importHelperUi';
 import * as fs from 'fs';
 import { docs } from './document';
-import { globals } from './common/vscodeSupport';
-
+import * as vs from './common/vscodeSupport';
 import * as plainQuickPick from './plainQuickPick';
 import * as addImportAPI from './importHelperApi';
 import * as ss from './common/systemSupport';
+// import * as es from './common/errorSupport';
 
+// es.initEntryPoint();
 
 // globals for debugging
 (global as any).$vscode = vscode;
@@ -47,15 +49,15 @@ import * as ss from './common/systemSupport';
 (global as any).$addImportAPI = addImportAPI;
 (global as any).$ss = ss;
 (global as any).$docs = docs;
-(global as any).$globals = globals;
+(global as any).$globals = vs.globals;
 
 let addImportUI = new ImportHelperUi();
 
 export function activate(context: vscode.ExtensionContext) {
 
-  globals.workspaceStorage = context.workspaceState;
-	globals.globalStorage = context.globalState;
-	globals.extensionPath = ss.internalizePath(context.extensionPath);
+  vs.globals.workspaceStorage = context.workspaceState;
+	vs.globals.globalStorage = context.globalState;
+	vs.globals.extensionEntryPointPath = ss.internalizePath(context.extensionPath)+'out-bundle/';
 
   addImportUI.init();
 
@@ -106,8 +108,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 	);
 
+
+  vs.globals.isExtensionActive = true;
 }
 
 export function deactivate() {
+  vs.globals.isExtensionActive = false;
 }
 

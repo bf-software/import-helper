@@ -13,7 +13,7 @@ export class QuickViewPanel {
 
   public show() {
     let webViewPanel = vscode.window.createWebviewPanel('QuickViewPanel',this.tabText, vscode.ViewColumn.Two, {enableScripts: true});
-		let codiconsUri = webViewPanel.webview.asWebviewUri(vscode.Uri.joinPath(vs.globals.extensionUri!, 'node_modules', 'vscode-codicons', 'dist', 'codicon.css'));
+		let codiconsUri = webViewPanel.webview.asWebviewUri(vscode.Uri.joinPath(vscode.Uri.file(vs.globals.extensionEntryPointPath), 'codicon.css'));
 		webViewPanel.webview.html = `
 			<!DOCTYPE html>
 			<html lang="en">

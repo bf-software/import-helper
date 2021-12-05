@@ -34,8 +34,12 @@ export class ImportHelperUi {
   }
 
   public async init() {
-    this.openModuleKey = vs.keyToDisplayText(await vs.getKeyBinding('import-helper.openModule'));
-    this.showReferencesKey = vs.keyToDisplayText(await vs.getKeyBinding('import-helper.showReferences'));
+    try {
+      this.openModuleKey = vs.keyToDisplayText(await vs.getKeyBinding('import-helper.openModule'));
+      this.showReferencesKey = vs.keyToDisplayText(await vs.getKeyBinding('import-helper.showReferences'));
+    } catch (e) {
+      console.log('ImportHelperUi.init(): ' + ((e as Error).message ?? '') );
+    }
 
     this.api.onGetSpecificFileChoice.do( async (projectFiles)=> {
       let selected = await vscode.window.showQuickPick<ProjectFileQuickPickItem>(
@@ -67,8 +71,10 @@ export class ImportHelperUi {
    * main entrypoint for the three main commands: addImport, openModule, and showReferences
    */
   public async startQuickPick(mode: IHMode) {
-    if (!docs.active)
+    if (!docs.active) {
+      vscode.commands.executeCommand('workbench.action.quickOpen');
       return;
+    }
     this.disposeAllQuickPicks();
 
     this.api.mode = mode;
@@ -77,7 +83,7 @@ export class ImportHelperUi {
       this.changedModuleValue();
     } });
 
-    // starting here, the docs.actve.project is available to use because of the prior call to initRun()
+    // at this point, the docs.actve.project is available to use because of the prior call to initRun()
 
     if (mode == IHMode.openModule) {
       // if this is not a ts or js project, then open vscode's "Go to file..." search
@@ -211,7 +217,7 @@ export class ImportHelperUi {
 
   public getButtons(mode: IHMode):PlainQuickPickButtons {
     let buttons = new PlainQuickPickButtons();
-    buttons.iconPath = globals.extensionPath + 'out-bundle/images/Microsoft/';
+    buttons.iconPath = globals.extensionEntryPointPath + 'images/Microsoft/';
     buttons.add('show all (*)', 'showAll.svg', () => {
       this.moduleQuickPick!.value = '*';
       this.changedModuleValue();

@@ -71,6 +71,7 @@ import { SourceSymbolImport, SourceSymbolImports } from './projectModule';
 import { ProjectWatcher } from './projectWatcher';
 import * as as from './appSupport';
 import { SourceModuleImports, SourceModuleImport } from './projectModule';
+import { docs } from './document';
 
 /**
  * contains all of the details pertaining to a project, such as configuration info from `package.json`,
@@ -277,6 +278,21 @@ export class Project {
     }
   }
 
+  public getModuleSpecifierBasedOnPaths(absoluteModuleSpecifier:string):string {
+    let result = '';
+    if (this.config) {
+      if (this.config.paths.matchOnMatcherPath(absoluteModuleSpecifier))
+        result = this.config.paths.resultingMatchedModuleSpecifier;
+      else if (this.config.baseUrlExists) {
+        // since a baseURL has been defined, we'll use paths that are relative to the baseURL
+        result = ss.forwardSlashes( path.relative( this.config.baseUrl, absoluteModuleSpecifier ) );
+        result = ss.trimStartChars(result,['.','/']);
+      }
+    }
+    return result;
+  }
+
+
   /**
    * finds an appropriate moduleSpecifier for an absolute module specifier.  This basically reverses typescript's module resolution algorithm.
    * First check the `absoluteModuleSpecifier` to see if:
@@ -285,38 +301,89 @@ export class Project {
    * 3. any rootDirs match, then use a realtive path as if the imported module resides in the same folder as importing module
    * 4. all else fails, use a relative path from the importing module to the imported module
    */
-  public getBestShortenedModuleSpecifier(importingModulePath: string, absoluteSortenedModuleSpecifier: string): string {
-    let result = '';
-    if (this.config) {
+  public getBestShortenedModuleSpecifier(importingModule: Module, absoluteSortenedModuleSpecifier: string): string {
 
-      if (this.config.paths.matchOnMatcherPath(absoluteSortenedModuleSpecifier))
-        result = this.config.paths.matchedModuleSpecifier;
+    // if found in the "virtual directory", just use that.
+    if (this.config)
+      if (this.config.rootDirs.inVirtualDirectory(importingModule.path))
+        if (this.config.rootDirs.inVirtualDirectory(absoluteSortenedModuleSpecifier))
+          return this.config.rootDirs.resultingVirtualModuleSpecifier;
 
-      else if (this.config.baseURLExists) {
-        // since a baseURL has been defined, we'll use paths that are relative to the baseURL
-        result = ss.forwardSlashes( path.relative( this.config.baseURL, absoluteSortenedModuleSpecifier ) );
-        result = ss.trimStartChars(result,['.','/']);
-      }
+    // get the specifier based on `tsconfig.paths`.
+    let basedOnPaths = this.getModuleSpecifierBasedOnPaths(absoluteSortenedModuleSpecifier);
 
+    // use paths that are relative to the importingModulePath
+    let basedOnRelative = ss.forwardSlashes( path.relative( importingModule.path, absoluteSortenedModuleSpecifier) );
+    if (ss.startsWith(basedOnRelative,'/'))
+      basedOnRelative = '.' + basedOnRelative;
+    else if (! ss.startsWith(basedOnRelative,'.') )
+      basedOnRelative = './' + basedOnRelative;
+
+    // from vscode settings:
+    // Preferred path style for auto imports.
+    //  - shortest: Prefers a non-relative import only if one is available that has fewer path segments than a relative import.
+    //  - relative: Prefers a relative path to the imported file location.
+    //  - non-relative: Prefers a non-relative import based on the `baseUrl` or `paths` configured in your `jsconfig.json` / `tsconfig.json`.
+    //  - project-relative: Prefers a non-relative import only if the relative import path would leave the package or project directory. Requires using TypeScript 4.2+ in the workspace.
+
+    // addition import-helper option:
+    //  - non-relative-unless-same:
+    //       Prefers a non-relative import, except when the importing module and imported module are in the same non-relative hierarchy.
+    //       ex. if paths = ['*', '@bf-s/*'], then modules inside of '@bf-s/' hierarchy will use relative imports, but things outside of @bf-s
+    //       will use non-relative paths to import @bf-s modules.
+
+    let pathStyle = '';
+    let importHelperPathStyle = vscode.workspace.getConfiguration('import-helper.moduleSpecifier',docs.active?.vscodeDocument?.uri).get<string>('pathStyle') ?? '';
+    if (importHelperPathStyle == '' || importHelperPathStyle == 'use-vscode-settings')
+      pathStyle = docs.active!.pathStyle;
+    else
+      pathStyle = importHelperPathStyle;
+
+    if (pathStyle == 'shortest') {
+      if (basedOnPaths != '' && (ss.getPathDepth(basedOnPaths) < ss.getPathDepth(basedOnRelative)) )
+        return basedOnPaths;
+      else
+        return basedOnRelative;
+
+    } else if (pathStyle == 'relative') {
+        return basedOnRelative;
+
+    } else if (pathStyle == 'non-relative') {
+      if (basedOnPaths != '')
+        return basedOnPaths;
+      else
+        return basedOnRelative;
+
+    } else if (pathStyle == 'project-relative') {
+      if (basedOnPaths != '' && ss.startsWith(absoluteSortenedModuleSpecifier, this.projectPath) )
+        return basedOnPaths;
+      else
+        return basedOnRelative;
+
+    } else {
+      // we'll use import helper's non-relative-except style
+      let importingBasedOnPaths = this.getModuleSpecifierBasedOnPaths(importingModule.file);
+      if (basedOnPaths != '' && ss.getFirstFolderName(basedOnPaths) != ss.getFirstFolderName(importingBasedOnPaths))
+        return basedOnPaths;
+      else
+        return basedOnRelative;
     }
-
-    if (result == '')
-      if (this.config)
-        if (this.config.rootDirs.inVirtualDirectory(importingModulePath))
-          if (this.config.rootDirs.inVirtualDirectory(absoluteSortenedModuleSpecifier))
-            result = this.config.rootDirs.virtualModuleSpecifier;
-
-    if (result == '') {
-      // use paths that are relative to the importingModulePath
-      result = ss.forwardSlashes( path.relative( importingModulePath, absoluteSortenedModuleSpecifier) );
-      if (ss.startsWith(result,'/'))
-        result = '.' + result;
-      else if (! ss.startsWith(result,'.') )
-        result = './' + result;
-    }
-
-    return result;
   }
+  /**
+  /src/@bf-s/systemSupport
+  /src/@bf-s/client/clientSupport
+
+  importing module:      /src/@bf-s/client/clientSupport
+  importing module path: /src/@bf-s/client/
+  absolute module spec: /src/@bf-s/systemSupport
+
+  based on paths:    @bf-s/systemSupport
+  based on relative: ../systemSupport
+
+  now we need an importing-based-on-paths: @bf-s/client/clientsupport
+
+  if the "root" path of each based on path id the same, take relative.
+  */
 
   /**
    * looks through the current vscode project and figures out the `universalPathModuleSpecifier` given a typical non-absolute module
@@ -341,16 +408,16 @@ export class Project {
 
       // try matching on a paths entry
       if (this.config.paths.matchOnMatcher(anyShortenedModuleSpecifier)) {
-        for (let matchedMatcherPath of this.config.paths.matchedMatcherPaths) {
+        for (let matchedMatcherPath of this.config.paths.resultingMatchedMatcherPaths) {
           let found = this.sourceModules.byUniversalPathShortenedModuleSpecifier(matchedMatcherPath)
           if (found)
             return {universalPathModuleSpecifier:found.value.universalPathModuleSpecifier, sourceModule:found.value};
         }
       }
 
-      if (this.config.baseURLExists) {
+      if (this.config.baseUrlExists) {
         // since a baseURL has been defined, we'll try building an absolute path starting from the baseUrl
-        let fromBaseURL = ss.forwardSlashes( path.resolve( this.config.baseURL, anyShortenedModuleSpecifier ) );
+        let fromBaseURL = ss.forwardSlashes( path.resolve( this.config.baseUrl, anyShortenedModuleSpecifier ) );
         let found = this.sourceModules.byUniversalPathShortenedModuleSpecifier(fromBaseURL)
         if (found)
           return {universalPathModuleSpecifier:found.value.universalPathModuleSpecifier, sourceModule:found.value};

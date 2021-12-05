@@ -1,5 +1,5 @@
 /*
-  collectionSupport - uses a "Full Find" design pattern to extend the usefullness of standard JS collections like Array, and Map.
+  full find collections - uses a "Full Find" design pattern to extend the usefullness of standard JS collections like Array, and Map.
 
   classes offered:
     FfArray - a simple array
@@ -148,6 +148,7 @@
 //***** FfBaseArray -> FfArray *********************
 
 import * as ss from './systemSupport';
+
 
 export class FfBaseArrayFound<V> {
   /* friend of FfBaseArray; */

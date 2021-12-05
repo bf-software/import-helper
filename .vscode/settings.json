@@ -2,11 +2,18 @@
   "javascript.format.semicolons": "insert",
 
   "search.exclude": {
+    "**/*.js": true,
+    "**/*.json": true,
+    "**/*.mjs": true,
+    "**/*.js.map": true,
+    "**/*.md": true,
     "**/out": true,
+    "**/package-lock.json": true,
+    "**/tsconfig.json": true,
     "**/out-bundle": true
   },
 
   // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
-  "typescript.tsc.autoDetect": "off"
+  "typescript.tsc.autoDetect": "off",
 
 }

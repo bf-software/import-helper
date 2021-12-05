@@ -15,7 +15,6 @@ import strip from 'strip-comments';
 import { docs } from '../document';
 
 
-
 export function getWorkspaceFolders():string[] {
   let result:string[] = [];
   if (vscode.workspace.workspaceFolders)
@@ -94,16 +93,13 @@ export function isWorkspaceRoot(path:string):boolean {
 }
 
 class VSCodeGlobals {
+  public isExtensionActive:boolean = false;
   public workspaceStorage: vscode.Memento | null = null;
   public globalStorage: vscode.Memento | null = null;
-  public extensionUri: vscode.Uri | null = null;
-  public set extensionPath(path:string) {
-    this.extensionUri = vscode.Uri.file(path);
-  }
-  public get extensionPath() {
-    return ss.internalizePath(this.extensionUri?.fsPath ?? '');
-  }
-
+  /**
+   * this must get assigned in the activate(context) event.  The `context.extensionPath` parameter will contain the value needed for this.
+   */
+  public extensionEntryPointPath: string = '';
 }
 
 
@@ -204,14 +200,18 @@ export async function getKeyBinding(command:string):Promise<string> {
     }
   }
 
-let packageObj:any = JSON.parse( ss.bufferToString(await ss.readFile( globals.extensionPath+'package.json' )) );
-  let keyBindings:any[] = packageObj.contributes.keybindings;
-  for (let binding of keyBindings) {
-    if ((binding.command ?? '') == command)
-      if (process.platform == 'darwin')
-        return (binding.mac ?? binding.key);
-      else
-        return binding.key;
+  // package.json is in the parent of the extensionEntryPointPath
+  let packageJsonFile = ss.extractPath(globals.extensionEntryPointPath) + 'package.json';
+  if ( await ss.fileExists(packageJsonFile) ) {
+    let packageObj:any = JSON.parse( ss.bufferToString(await ss.readFile( packageJsonFile )) );
+    let keyBindings:any[] = packageObj.contributes.keybindings;
+    for (let binding of keyBindings) {
+      if ((binding.command ?? '') == command)
+        if (process.platform == 'darwin')
+          return (binding.mac ?? binding.key);
+        else
+          return binding.key;
+    }
   }
 
   return '';

@@ -189,6 +189,13 @@ export class Document {
     return this.getBooleanSetting(this.module!.usesModuleExtensions,'preferences','importModuleSpecifierEnding','js');
   }
 
+  public get pathStyle():string {
+    let result = this.getSetting('preferences','importModuleSpecifier');
+    if (typeof result == 'string')
+      return result;
+    return '';
+  }
+
 }
 
 export class CodeDocuments extends cs.FfMap<vscode.TextDocument, Document> {

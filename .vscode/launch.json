@@ -6,23 +6,25 @@
   "configurations": [
 
   {
-    "name": "Launch Extension Tests",
+    "name": "Tests",
     "args": [
       "--extensionDevelopmentPath=${workspaceFolder}",
       "--disable-extensions",
-      "--extensionTestsPath=${workspaceRoot}/dev/out/test/suite/index.js",
+      "--extensionTestsPath=${workspaceRoot}/out-tests-bundle/testsEntryPoint.js",
     ],
     "outFiles": [
-      "${workspaceFolder}/out/**/*.js"
+      "${workspaceFolder}/out-tests-bundle/**/*.js"
     ],
     "request": "launch",
     "runtimeExecutable": "${execPath}",
-    "type": "pwa-extensionHost"
+    "type": "pwa-extensionHost",
+    //"console": "integratedTerminal",
+    //"outputCapture": "std",
   },
 
 
   {
-    "name": "Launch Extension",
+    "name": "Extension",
     "args": [
       "--extensionDevelopmentPath=${workspaceFolder}",
    //   "--disable-extensions"

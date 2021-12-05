@@ -131,7 +131,7 @@ export abstract class ProjectModule {
   }
 
   /**
-   * a full absolute path + module name.
+   * a full absolute path + module name (unless it's in node_modules, then a short specifier is allowed).
    * Examples of universalPathModuleSpecifiers:
    *- `c:/projects/importHelper/common/systemSupport.ts`
    *- `/projects/importHelper/common/systemSupport.ts`

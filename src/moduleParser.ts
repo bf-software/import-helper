@@ -31,6 +31,7 @@ import { ImportStatement } from './importStatementParser';
 import { Token, Scanable, TK } from './token';
 import { Project } from './project';
 import * as as from './appSupport';
+import * as vscode from 'vscode';
 
 const cMaxNonImportTokens = 20;
 

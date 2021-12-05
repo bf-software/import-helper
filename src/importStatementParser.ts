@@ -345,10 +345,17 @@ export class ImportStatement extends Scanable {
 	  return this.universalPathShortenedModuleSpecifier == otherImportStatement.universalPathShortenedModuleSpecifier;
 	}
 
+  /**
+   * returns the module specifier for the import statement with the shortest (or most appropriate) path possible.
+   * The most important thing for shortening the path is knowing the importing module's path.  This uses the {@link ImportStatement.parent}
+   * (which should point to a {@link Module} to get the importing module's path.)
+   */
 	public get moduleSpecifier(): string {
+    // if this is node_modules specifier, just return it.
 	  if (!ss.isAbsolutePath(this.universalPathModuleSpecifier))
 		  return this.universalPathModuleSpecifier;
-	  let bestPath = ss.extractPath((this.parent as Module).project.getBestShortenedModuleSpecifier((this.parent as Module).path, this.universalPathShortenedModuleSpecifier));
+
+	  let bestPath = ss.extractPath((this.parent as Module).project.getBestShortenedModuleSpecifier(this.parent as Module, this.universalPathShortenedModuleSpecifier));
 		let moduleSpecifierJuggler = new as.ModuleSpecifierJuggler(bestPath + ss.extractFileName(this.universalPathShortenedModuleSpecifier));
 	  return (
 		  moduleSpecifierJuggler.asString({

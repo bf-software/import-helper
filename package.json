@@ -3,7 +3,7 @@
 	"publisher": "bf-software",
 	"displayName": "Import Helper",
 	"description": "quickly add imports for modules and symbols to the top of your code (for .ts, .js, .tsx, .jsx, & .svelte)",
-	"version": "0.7.0",
+	"version": "0.7.1",
 	"icon": "out-bundle/images/BF Software/icon.png",
 	"engines": {
 		"vscode": "^1.62.0"
@@ -25,10 +25,20 @@
 		"configuration": {
 			"title": "Import Helper",
 			"properties": {
+				"import-helper.moduleSpecifier.pathStyle": {
+					"type": "string",
+					"scope": "window",
+          "enum":["use-vscode-settings", "non-relative-unless-same"],
+          "markdownDescription": "leave this blank, or select `use-vscode-settings` to defer to `TypeScript/JavaScript › Preferences: Import Module Specifier`.",
+					"markdownEnumDescriptions": [
+            "uses vscode's setting in `TypeScript/JavaScript › Preferences: Import Module Specifier`.",
+            "prefers non-relative paths, unless the importing module and imported module are in the same non-relative path hierarchy."
+          ]
+				},
 				"import-helper.paths.exclude": {
 					"type": "string",
 					"scope": "window",
-					"default": "out, build",
+					"default": "",
 					"markdownDescription": "List paths to be excluded when looking for your project's modules. Start a path with a forward slash to start from the root of your workspace, otherwise exclusions are considered to reside anywhere in the path.\n\n&nbsp;\n\nFor example: `/out, test` will exclude `<workspace root>/out`, but not `<workspace root>/whatever/out`.  It will also exclude any folder named `test` in your entire hierarchy. There is no need to add `node_modules` as it is always excluded."
 				},
 				"import-helper.extentions.additional": {
@@ -95,13 +105,11 @@
 		]
 	},
 	"scripts": {
-		"dev-tsc-compile": "rm -rf out/ && tsc -p ./ && cp -r src/images/ out/",
-		"dev-tsc-watch": "tsc -watch -p ./",
-		"dev-mocha-report": "echo \"visit http://localhost:8080/\" && http-server \"./out/test/results/\" -s",
-		"dev-webpack-build": "webpack --config ./webpack.config.mjs | less -f -r",
-		"dev-webpack-watch": "webpack --config ./webpack.config.mjs --watch",
-		"prod-webpack-build": "cross-env NODE_ENV=production webpack --config ./webpack.config.mjs",
-		"prod-map-explorer": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map",
+		"dev-build": "webpack --config ./webpack.config.mjs | less -f -r",
+		"dev-watch": "webpack --config ./webpack.config.mjs --watch",
+		"prod-build": "cross-env NODE_ENV=production webpack --config ./webpack.config.mjs",
+		"prod-map-explorer-html": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map",
+    "prod-map-explorer-list": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map --tsv",
 		"prod-vsce-deploy": "vsce package --no-dependencies --out ./deploy"
 	},
 	"devDependencies": {
@@ -134,7 +142,9 @@
 		"webpack-cli": "^4.9.1"
 	},
 	"dependencies": {
+		"chalk": "^4.1.2",
 		"semver": "^7.3.5",
+		"source-map-js": "^1.0.1",
 		"strip-comments": "^2.0.1",
 		"typescript": "^4.4.3"
 	}

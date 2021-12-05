@@ -1,12 +1,12 @@
 {
 		"compilerOptions": {
 
-			"lib": ["ESNext"],            /* tells the typescript transpiler what version of javascript you intend to code in.
+			"lib": ["ES2021","DOM"],        /* tells the typescript transpiler what version of javascript you intend to code in.
 																	     You can indicate that you only intend to use an older version of Javascript for
 																			 most of your code, but additionally indicate that certain new javascript features
 																			 will be used by adding elements using "<jsVersion>.<area>" notation. */
 
-			"target": "ESNext",           /* tells the typescript transpiler what version of Javascript you would like the output
+			"target": "ES2021",           /* tells the typescript transpiler what version of Javascript you would like the output
 																		   to transpile to. Transpiling handles some pollyfills, but not all.  If you find that
 																			 things in your code aren't being pollyfilled properly, you'll have to use Babel on top
 																			 of the typescript transpiler.  */

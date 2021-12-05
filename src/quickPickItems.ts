@@ -137,7 +137,7 @@ export class SourceModuleQuickPickItem extends ProjectModuleQuickPickItem {
 	}
 }
 
-/** this is only used by {@link ImportHelperApe.showReferences} so that it can keep track of where the importing import statement is. */
+/** this is only used by {@link ImportHelperApi.showReferences} so that it can keep track of where the importing import statement is. */
 export class SourceModuleQuickPickItemLocation extends SourceModuleQuickPickItem {
   constructor(
     module:Module,
