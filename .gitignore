@@ -3,5 +3,3 @@ node_modules
 out-bundle
 out-tests-bundle
 src/common/createLinks.bat
-src/common/collectionSupport.ts
-src/common/systemSupport.ts
