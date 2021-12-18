@@ -120,16 +120,16 @@ There are 2 main aspects of module resolution: 1. defining, and 2. mapping.
         can now also be this:
           import * as ss from 'systemSupport';
         for any module in the project, no matter what sub folder it's located in.
-
+     
      How this works:
           our module specifier in the example above is 'systemSupport'. First, typescript woul'd check in the BaseURL for 'systemSupport', but `baseUrl` isn't defined, so it skips that. Then typescript looks at the first "paths" item which is '*'.  '*' means "for any moduleSpecifier", so then it takes the text matched by '*', which by definition is all of the module specifier, which, again is 'systemSupport', and merges it with the first path: './src/common/*' to form './src/common/systemSupport'.  Since './src/common/systemSupport' exists, that's what typescript will use. However if it didn't exist, it would have tried './src/tools/systemSupport' before finally giving up and raising an error.
-
+     
       similarly, this import:
           import * as ss from '/project/importHelper/src/tools/strings';
      can now also be this:
           import * as ss from 'wow/strings';
         for any module in the project, no matter what sub folder it's located in.
-
+     
      How this works:
           our module specifier in the example above is 'wow/strings', so first, typescript checks in the BaseURL for 'wow/strings', which it doesn't find.  Then typescript looks at the first "paths" item which is '*'.  '*' means "for any moduleSpecifier", so then it takes the text matched by '*', which by definition is all of the module specifier, which, again is 'wow/strings', and merges it with the first path: './src/common/*' to form './src/common/wow/strings'.  Since './src/common/wow/strings' does NOT exist, typescript tries the next path in the '*' item to no avail.  Then typescript notices that 'wow/strings' is matched by 'wow/*', so it takes the part of 'wow/strings' that the * matched, which is 'strings' and merges it with the first path: './src/tools/*' forming './src/tools/strings'. Since './src/tools/strings' exists, that is used.
      ```
@@ -178,13 +178,17 @@ Modules offered by the node_modules folder are pulled in by leveraging vscode's 
 
 ## To Do
 
-### Import Recommendations
+### (easy items)
 
-Import Helper will parse all of the files in the project cataloging all of the import styles used.  The idea is to suggest module aliases for quickly importing modules.  If the importing module's cursor symbol matches an alias in the system, it should be immediately shown in the suggestions as a full import.
+### smart initial search text
 
-example:
+IH should keep track of what the user typed recently.  If the user invokes IH's Add Import command right after typing some text, that text should be the default. for example, if the user typed `let x = new Uri`, the default search text should be `Uri`.  If they typed `let x = new Uri()`, the search should be `"Uri"` (with double quotes), that way the results will be narrower.  The key is: only use the last typed string if it was typed no more than 30 seconds ago--and the cursor is still in the location that the typing occurred.  Then parse out the symbol token closest to the text.  Determine if the symbol was definitely a complete symbol (by looking at punctuation at the end of the symbol, and stripping it out in the process). Finally, use the text as the default search text, putting it in double quotes if it was a complete symbol.
 
-If the cursor is here `ss.|`, then `"ss"` is the possible alias.  When Import Helper in invoked, it will look for the ss alias in the imports.  If any are found, they should appear in the recommendation section (the section of QuickPickItems above the separator line) in the order of most to least used. (There should usually be only one module listed per alias.)
+### awaiting proposed `QuickPick `feature
+
+once the proposed quickpick item separator feature is released (https://github.com/microsoft/vscode/issues/74967), use it instead of the underscore string in the quickpick item description.
+
+### (hard items)
 
 ### webviews --> treeview
 
@@ -194,11 +198,14 @@ change the webview to use a treeview and (possibly the references treeview) for 
 
 when the open module command is used to open a module, if there are multiple source code options (like a .d.ts, .mjs, or .js files) that are associated with the module, IH will provide a list to choose from.  This list comes from complicated reverse module resolution code that looks at all the crazy settings in `package.json`.  Currently the code that analyzes the `main`, `types`, `typesVersons` and `exports` entries is a little weak (as I don't fully understand all of the mapping possibilites made available by those features).
 
-### awaiting proposed `QuickPick `features
+### locate the exported symbol when opening
 
-once the proposed quickpick item button features are released ( https://github.com/microsoft/vscode/issues/88716 ), use them instead of the toolbar buttons for "open" and "show references"
+when IH is used to open a symbol item, it currently opens the module it is exported from and leaves the cursor at the default position.  ID should parse the module and place the cursor at the export declaration for the symbol.
 
-### determine default  exports for  modules
+### determine default exports for modules
 
-IH should limit the full module import options on the bottom of the symbol search based on what is being exported by the module.  For example, if there is only one default export, and no symbols (like for common JS modules), there shouldn't be a `import * as xxxx from 'yyyy';` option, as that can't be used.  Also if there is default export, there shouldn't be an `import xxxx from 'yyyy';`. The problem is that the only way to do this is to actually parse the module completely (and possibly other modules if the module has any re-export statements like:  `export * from 'zzzz';` )
+IH should limit the full module import options on the bottom of the symbol search based on what is being exported by the module.  For example, if there is only a default export, and no symbols (like for common JS modules), there shouldn't be a `import * as xxxx from 'yyyy';` option, as that can't be used.  Also, when there isn't a default export, there shouldn't be an `import xxxx from 'yyyy';`. The problem is that the only way to do this is to actually parse the module completely (and possibly other modules if the module has any re-export statements like:  `export * from 'zzzz';` )
 
+### tests
+
+tests are quite weak.  need more.

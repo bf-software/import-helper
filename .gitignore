@@ -1,3 +1,5 @@
-out-bundle
+deploy
 node_modules
+out-bundle
+out-tests-bundle
 src/common/createLinks.bat

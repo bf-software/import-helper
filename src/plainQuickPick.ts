@@ -3,16 +3,15 @@ import { Disposable } from 'vscode';
 import * as cs from './common/collectionSupport';
 import * as ss from './common/systemSupport';
 
-const cQuickPickItemVisibleLength = 78;
-
+export let settings = {quickPickItemVisibleLength: 72}
 
 export class PlainQuickPickButton implements vscode.QuickInputButton {
   public readonly iconPath: vscode.Uri | { light: vscode.Uri; dark: vscode.Uri } | vscode.ThemeIcon;
   public readonly tooltip?: string | undefined;
-  public onClick:()=>void;
+  public onClick:(item?:vscode.QuickPickItem)=>void;
   public parent:PlainQuickPickButtons;
 
-  constructor(parent:PlainQuickPickButtons, toolTip:string, iconFileName:string, onClick: () => void) {
+  constructor(parent:PlainQuickPickButtons, toolTip:string, iconFileName:string, onClick: (item?:vscode.QuickPickItem) => void) {
     this.iconPath = {
       light: vscode.Uri.file(parent.iconPath + '--light--' + iconFileName),
       dark: vscode.Uri.file(parent.iconPath + '--dark--' + iconFileName)
@@ -25,7 +24,7 @@ export class PlainQuickPickButton implements vscode.QuickInputButton {
 
 export class PlainQuickPickButtons extends Array {
   public iconPath: string = '';
-  public add(toolTip:string, iconName:string, onClick: () => void) {
+  public add(toolTip:string, iconName:string, onClick: (item?:vscode.QuickPickItem) => void) {
     this.push(new PlainQuickPickButton(this, toolTip, iconName, onClick));
   }
 }
@@ -36,6 +35,7 @@ export class PlainQuickPickItem implements vscode.QuickPickItem {
 	public detail: string = '';
 	public picked: boolean = false;
 	public alwaysShow: boolean = true;
+  public buttons: vscode.QuickInputButton[] = [];
 
   public hasSeparatorLine: boolean = false;
   public isSelectable: boolean = true;
@@ -48,7 +48,7 @@ export class PlainQuickPickItem implements vscode.QuickPickItem {
 
   public render() {
 		if (this.hasSeparatorLine)
-		  this.detail = '⎯'.repeat(cQuickPickItemVisibleLength);
+		  this.detail = '⎯'.repeat(settings.quickPickItemVisibleLength);
 		else
 		  this.detail = '';
   }
@@ -140,7 +140,11 @@ export class PlainQuickPick<T extends vscode.QuickPickItem> implements vscode.Qu
     this.sortByLabel = false;
 
     this.onDidTriggerButton((button:vscode.QuickInputButton) => {
-      (button as PlainQuickPickButton).onClick();
+      (button as PlainQuickPickButton).onClick(this.activeItems[0]);
+    });
+
+    this.onDidTriggerItemButton((event:vscode.QuickPickItemButtonEvent<T>) => {
+      (event.button as PlainQuickPickButton).onClick(event.item);
     });
 
     this.onDidChangeValue((newValue) => {
@@ -170,7 +174,7 @@ export class PlainQuickPick<T extends vscode.QuickPickItem> implements vscode.Qu
   public set matchOnDescription(matchOnDescription:boolean) { this.quickPick.matchOnDescription = matchOnDescription }
   public get matchOnDetail(): boolean { return this.quickPick.matchOnDetail }
   public set matchOnDetail(matchOnDetail:boolean) { this.quickPick.matchOnDetail = matchOnDetail }
-  public get sortByLabel(): boolean { return (this.quickPick as any).sortByLabel }  // sortByLabel isn't in the types yet as of vscode/index.d.ts v1.48. Oct-2021, still not there in v1.61
+  public get sortByLabel(): boolean { return (this.quickPick as any).sortByLabel }  // sortByLabel isn't in the types yet as of vscode/index.d.ts v1.48. Oct-2021, still not there in v1.63
   public set sortByLabel(sortByLabel:boolean) { (this.quickPick as any).sortByLabel = sortByLabel }
   public get activeItems():readonly T[] { return this.quickPick.activeItems }
   public set activeItems(activeItems: readonly T[]) { this.quickPick.activeItems = activeItems }
@@ -194,6 +198,7 @@ export class PlainQuickPick<T extends vscode.QuickPickItem> implements vscode.Qu
   public onDidAccept(listener: (e: void) => any, thisArgs?: any, disposables?: Disposable[]): Disposable { return this.quickPick.onDidAccept(listener,thisArgs,disposables) };
   public onDidChangeValue(listener: (e: string) => any, thisArgs?: any, disposables?: Disposable[]): Disposable { return this.quickPick.onDidChangeValue(listener,thisArgs,disposables) };
   public onDidTriggerButton(listener: (e: vscode.QuickInputButton) => any, thisArgs?: any, disposables?: Disposable[] | undefined):Disposable { return this.quickPick.onDidTriggerButton(listener,thisArgs,disposables) }
+  public onDidTriggerItemButton(listener: (e: vscode.QuickPickItemButtonEvent<T>) => any, thisArgs?: any, disposables?: Disposable[] | undefined):Disposable { return this.quickPick.onDidTriggerItemButton(listener,thisArgs,disposables) }
   public onDidChangeActive(listener: (e: readonly T[]) => any, thisArgs?: any, disposables?: Disposable[] | undefined):Disposable { return this.quickPick.onDidChangeActive(listener,thisArgs,disposables) }
   public onDidChangeSelection(listener: (e: readonly T[]) => any, thisArgs?: any, disposables?: Disposable[] | undefined):Disposable { return this.quickPick.onDidChangeSelection(listener,thisArgs,disposables) }
   public onDidHide(listener: (e: void) => any, thisArgs?: any, disposables?: vscode.Disposable[] | undefined):Disposable { return this.quickPick.onDidHide(listener,thisArgs,disposables) }

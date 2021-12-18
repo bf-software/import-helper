@@ -1,18 +1,24 @@
 {
 		"compilerOptions": {
 
-			"lib": ["ES2021","DOM"],        /* tells the typescript transpiler what version of javascript you intend to code in.
+                                      // Targeting vscode's version of node (Currently Node 14 <which can use ES2020> for vscode v1.63.0)
+
+			"lib": ["ES2020","DOM","ES2021.string"],
+                                      /* tells the typescript transpiler what version of javascript you intend to code in.
 																	     You can indicate that you only intend to use an older version of Javascript for
 																			 most of your code, but additionally indicate that certain new javascript features
 																			 will be used by adding elements using "<jsVersion>.<area>" notation. */
+                                       // using ES2021.string here to enable the use of `replaceAll` which typescript will pollyfill for us when
+                                       // outputting for ES2020
 
-			"target": "ES2021",           /* tells the typescript transpiler what version of Javascript you would like the output
+			"target": "ES2020",             /* tells the typescript transpiler what version of Javascript you would like the output
 																		   to transpile to. Transpiling handles some pollyfills, but not all.  If you find that
 																			 things in your code aren't being pollyfilled properly, you'll have to use Babel on top
 																			 of the typescript transpiler.  */
+                                       // using ES2020 here because vscode is using Node 14 for vscode v1.63.0
 
-			"module": "CommonJS",         /* Tells the typescript transpiler how it should transpile import statements in your modules.
-																	   	 Values can be: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', or 'ESNext'.
+			"module": "CommonJS",           /* tells the typescript transpiler how it should transpile import statements in your modules.
+																	   	 Values can be: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2020', 'es2021', or 'ESNext'.
 																			 The `import` keyword is not yet available in node.js so we need to use `commonjs` */
 
       "outDir": "out",

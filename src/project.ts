@@ -520,6 +520,48 @@ export class Project {
       await this.scanSourceModuleForImports(sourceModule);
   }
 
+
+  public requestSourceModuleReload(moduleFile:string) {
+    ss.debounce('requestSourceModuleReload:'+moduleFile, 1000, () => {
+      let absoluteShortenedModuleSpecifier = new as.ModuleSpecifierJuggler(moduleFile).shortenedModuleSpecifier;
+      let sourceModule = this.sourceModules.byUniversalPathShortenedModuleSpecifier(absoluteShortenedModuleSpecifier)?.value;
+      if (sourceModule) {
+        this.sourceModuleImportUsedBySourceModules.deleteKey2(sourceModule);
+        this.cleanUnusedProjectImports();
+        this.sourceModuleUsedBySourceModules.deleteKey2(sourceModule);
+        this.nodeModuleUsedBySourceModules.deleteKey2(sourceModule);
+      } else
+        sourceModule = this.sourceModules.addByModuleFile(moduleFile);
+
+      this.scanSourceModuleForImports(sourceModule);
+    });
+  }
+
+
+  public moduleRenamed(oldModuleFile: string, newModuleFile:string) {
+    let absoluteShortenedModuleSpecifier = new as.ModuleSpecifierJuggler(oldModuleFile).shortenedModuleSpecifier;
+    let sourceModule = this.sourceModules.byUniversalPathShortenedModuleSpecifier(absoluteShortenedModuleSpecifier)?.value;
+    if (sourceModule) {
+      this.sourceModuleImportUsedBySourceModules.deleteKey2(sourceModule);
+      this.cleanUnusedProjectImports();
+      this.sourceModuleUsedBySourceModules.deleteKey2(sourceModule);
+      this.nodeModuleUsedBySourceModules.deleteKey2(sourceModule);
+      this.sourceModules.delete(sourceModule.universalPathShortenedModuleSpecifier);
+    }
+    sourceModule = this.sourceModules.addByModuleFile(newModuleFile);
+    this.scanSourceModuleForImports(sourceModule);
+  }
+
+
+  /**
+   * this should be called whenever we know that a module file has changed.  This re-parses the code and makes sure
+   * the project's `sourceModules` and `usedBy` maps are up to date.
+   */
+  public moduleContentChanged(fileOrPath:string) {
+    if (as.isCodeFile(fileOrPath) || as.isAdditionalExtensionFile(fileOrPath))
+      this.requestSourceModuleReload(fileOrPath); // <-- requestSourceModuleReload has a debouncer to reduce excessive re-parsing
+  }
+
 }
 
 
@@ -608,7 +650,7 @@ export class Projects extends cs.FfSortedMap<string,Project> {
   /**
    * traverses up the modulePath's parent folders to find the controlling package.json, tsconfig.json, or jsconfig.json
    */
-  private async addProject(modulePath:string):Promise<cs.FfMapFound<string, Project>> {
+  public async addProject(modulePath:string):Promise<cs.FfMapFound<string, Project>> {
     let project:Project;
     let rootWorkspaceFolder = vs.getRootWorkspaceFolder(modulePath);
     let projectConfigFile = '';
@@ -641,18 +683,8 @@ export class Projects extends cs.FfSortedMap<string,Project> {
   /**
    * returns the project corresponding to a modulePath.
    */
-  public async byModulePath(modulePath:string):Promise<cs.FfMapFound<string,Project> | undefined> {
-    let found:cs.FfMapFound<string,Project>;
-    let foundPartialPath = this.byFunc( project => ss.startsWith(modulePath,project.projectPath) );
-    if (foundPartialPath) {
-      if (foundPartialPath.value.isDirty) {
-        this.delete(foundPartialPath.key);
-        found = await this.addProject(modulePath);
-      } else
-        found = foundPartialPath.toFound();
-    } else
-      found = await this.addProject(modulePath);
-    return found;
+  public byModulePath(modulePath:string):cs.FfMapFound<string,Project> | undefined {
+    return this.byFunc( project => ss.startsWith(modulePath,project.projectPath) );
   }
 
 }

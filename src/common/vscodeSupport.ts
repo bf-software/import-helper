@@ -163,6 +163,18 @@ export function codiconsToHTML(stringWithCodicons:string) {
   return result;
 }
 
+export function removeCodicons(stringWithCodicons:string) {
+  let matches = stringWithCodicons.matchAll(/\$\((\S+)\)/mg);
+  let result = '';
+  let p = 0;
+  for (let match of matches) {
+    result += stringWithCodicons.substring(p,(match.index ?? 0));
+    p = (match.index ?? 0) + match[0].length;
+  }
+  result += stringWithCodicons.substr(p);
+  return result;
+}
+
 /**
  * vscode's UserData path can be in many places:
  * 1) look in the vscode executable's folder for `data/user-data/` (this will be the location for the portable vscode)

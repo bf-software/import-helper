@@ -127,6 +127,8 @@
 import * as ss from './common/systemSupport';
 import * as as from './appSupport';
 import * as cs from './common/collectionSupport';
+import * as vscode from 'vscode';
+import { docs } from './document';
 export const cAppName = 'Import Helper';
 
 export const cGoToImportsPos = 'goToImports';
@@ -163,6 +165,8 @@ export const cNonCodeModuleFileIcons = new Map<string,string>(
 	]
 )
 
+export let additionalExtensions = new cs.FfArray<string>();
+
 export function isTypescriptFile(fileOrFileName:string):boolean {
   return Boolean( cTypescriptExtensions.byFunc( ext => fileOrFileName.endsWith(ext) )  );
 }
@@ -172,6 +176,17 @@ export function isSvelteFile(fileOrFileName:string) {
 
 export function isCodeFile(fileOrFileName: string): boolean {
   return Boolean( cCodeExtensions.byFunc( ext => fileOrFileName.endsWith(ext) )  );
+}
+
+export function isAdditionalExtensionFile(fileOrFileName: string): boolean {
+  return Boolean( additionalExtensions.byFunc( ext => fileOrFileName.endsWith(ext) )  );
+}
+
+export function initConfiguration() {
+  let additionalExtensionsSetting = vscode.workspace.getConfiguration('import-helper.extentions',docs.active?.vscodeDocument?.uri).get<string>('additional') ?? '';
+  let additionalExtensionsArray = additionalExtensionsSetting.split(',');
+  additionalExtensionsArray = additionalExtensionsArray.map( ext => ss.prefix('.',ss.removePrefix( ext.trim() ,'.')));
+  additionalExtensions = new cs.FfArray(...additionalExtensionsArray);
 }
 
 /**

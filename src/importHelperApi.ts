@@ -109,9 +109,11 @@ export class ImportHelperApi {
     let resolver = new ProjectModuleResolver(docs.active!.project!);
     let files = await resolver.getProjectFiles(docs.active!.project!.projectPath+'dummy.ts',item.importStatement.universalPathModuleSpecifier);
     let fileToOpen = '';
-    if (files.size == 1)
+    if (files.size == 0)
+      this.onShowMessage.cue({msg:`Open Module: can't find "${vs.removeCodicons(item.label).trim()}"`, style:MessageStyle.info});
+    else if (files.size == 1)
 		  fileToOpen = files.first!.key;
-    else if (files.size > 1)
+    else
       fileToOpen = (await this.onGetSpecificFileChoice.cue(files)) ?? '';
 		if (fileToOpen != '')
 		  vscode.window.showTextDocument(vscode.Uri.file(fileToOpen));
@@ -141,8 +143,15 @@ export class ImportHelperApi {
         importedQpi instanceof qpi.SourceSymbolImportQuickPickItem &&
         (importingModules = docs.active?.project?.sourceSymbolImportUsedBySourceModules.byKey1((importedQpi.projectModule as any) as SourceSymbolImport)?.key2Map!)
       ) {}
-      else
+      else if (
+        (importedQpi instanceof qpi.SymbolQuickPickItem) &&
+        (importedQpi as qpi.SymbolQuickPickItem).exportSymbol.sourceSymbolImport &&
+        (importingModules = docs.active?.project?.sourceSymbolImportUsedBySourceModules.byKey1( (importedQpi as qpi.SymbolQuickPickItem).exportSymbol.sourceSymbolImport! )?.key2Map!)
+      ) {}
+      else {
+        this.onShowMessage.cue({msg:`Show All References: Project does not import "${vs.removeCodicons(importedQpi.label).trim()}"`, style:MessageStyle.info});
         return;
+      }
     }
 
     for (let [importingModule, location] of importingModules) {
@@ -171,7 +180,7 @@ export class ImportHelperApi {
 			`;
 
 		let quickViewPanel = new QuickViewPanel();
-		quickViewPanel.tabText = 'Show References';
+		quickViewPanel.tabText = 'Show All References';
 		quickViewPanel.items = htmlItems;
 		quickViewPanel.headerText = importingModules.size + ss.sp(importingModules.size, ' Module', ' Modules') +' Using:';
     quickViewPanel.headerText = ss.sp(importingModules.size, ' Module', ' Modules') + ' Using:';

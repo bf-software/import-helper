@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { docs } from './document';
 import * as vs from './common/vscodeSupport';
 import * as cs from './common/collectionSupport';
+import { SourceSymbolImport } from './projectModule';
 
 /**
  * represents a symbol that a module exports
@@ -12,6 +13,7 @@ export class ModuleSymbol {
 	public alias: string = '';
 	public type: string = '';
   public referenceCount: number = 0;
+  public sourceSymbolImport: SourceSymbolImport | undefined;
 }
 
 /**
@@ -42,7 +44,7 @@ export class ModuleSymbols extends cs.FfArray<ModuleSymbol> {
 				moduleSymbol.name = (typeof comp.label == 'string' ? comp.label : comp.label.label);
 				if (typeof comp.kind =='undefined')
 					moduleSymbol.type = '?';
-				else if (comp.kind == vscode.CompletionItemKind.Text)
+				else if (comp.kind == vscode.CompletionItemKind.Text || comp.kind == vscode.CompletionItemKind.Snippet)
 					continue;
 				else
 					moduleSymbol.type = vscode.CompletionItemKind[comp.kind].toLowerCase();
@@ -57,6 +59,7 @@ export class ModuleSymbols extends cs.FfArray<ModuleSymbol> {
 						newModuleSymbol.type = moduleSymbol.type;
 						newModuleSymbol.alias = sourceSymbolImport.alias;
 						newModuleSymbol.referenceCount = sourceSymbolImport.usedByCount;
+            newModuleSymbol.sourceSymbolImport = sourceSymbolImport;  // <-- make a note of this for finding symbol references in step 2
 						this.push(newModuleSymbol);
 						if (newModuleSymbol.alias == '')
 						  addedNonAliasSymbol = true;

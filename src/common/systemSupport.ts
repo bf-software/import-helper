@@ -58,7 +58,6 @@ import { URL } from 'url';
 import * as fs from 'fs';
 import * as nodePath from 'path';
 import { promises as fsp } from 'fs';
-import * as url from 'url';
 
 
 // process /////////////////////////////////////////////////////////////////////
@@ -1135,6 +1134,34 @@ export function def(param:any,defaultValue:any) {
 export async function sleep(ms:number) {
   await new Promise(resolve => setTimeout(resolve, ms));
 }
+
+/**
+ * turns a function into a debounced function
+ */
+export function makeDebounceFunc(waitMSec:number, func: Function) {
+  let timer:NodeJS.Timeout;
+  return function (this:any, ...args:any[]) {
+    clearTimeout(timer);
+    timer = setTimeout( () => func.apply(this, args), waitMSec);
+  }
+};
+
+
+let debounceMap = new Map<any,NodeJS.Timeout>();
+/**
+ * calls func once within a wait limit.
+ * @param context a unique identifier for this debounce situation
+ */
+export function debounce(context:any, waitMSec:number, func: () => void) {
+  let item = debounceMap.get(context);
+  if (item)
+    clearTimeout(item);
+  debounceMap.set(context, setTimeout( () => {
+    debounceMap.delete(context);
+    func();
+  }, waitMSec) );
+}
+
 
 // urls ////////////////////////////////////////////////////////////////
 

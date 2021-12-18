@@ -3,12 +3,17 @@
  * Module resolution is quite complex and warrants it's own module.
  */
 
-import { Project } from './project'
-import * as ss from './common/systemSupport'
-import * as path from 'path'
-import * as as from './appSupport'
-import * as cs from './common/collectionSupport'
-import * as semver from 'semver'
+import { Project } from './project';
+import * as ss from './common/systemSupport';
+import * as path from 'path';
+import * as as from './appSupport';
+import * as cs from './common/collectionSupport';
+
+// semver can't be tree-shaked by webpack for some reason,
+// importing this way limits the unnecessary semver modules included by webpack
+import semverSatisfies from 'semver/functions/satisfies';
+
+
 
 /**
  * describes a source file for a project.  This is mainly used when returning multiple
@@ -252,11 +257,11 @@ export class ProjectModuleResolver {
     // check for typesVersions
     if (typesFile != '') {
       if (packageObject.typesVersions) {
-        for (let typesVersion of packageObject.typesVersions) {
-          if (semver.satisfies(this.typescriptVersion, typesVersion)) {
+        for (let typesVersion in packageObject.typesVersions) {
+          if (semverSatisfies(this.typescriptVersion, typesVersion)) {
             let versionMap = packageObject.typesVersions[typesVersion];
             if (versionMap) {
-              let matcher:string = versionMap.keys[0];
+              let matcher:string = Object.keys(versionMap)[0];
               let matcherValue:string = versionMap[matcher][0] ?? '';
               let versionedTypesFile = '';
               if (matcherValue != '') {
@@ -264,8 +269,10 @@ export class ProjectModuleResolver {
                   versionedTypesFile = ss.internalizeFile(path.normalize(matcherValue.replace('*',relativeTypesFile)))
                 else
                   versionedTypesFile = ss.extractPath(relativeTypesFile) + matcherValue
-                if (versionedTypesFile != '')
+                if (versionedTypesFile != '') {
                   typesFile = ss.resolveFile(packagePath, versionedTypesFile);
+                  typesName = 'typesVersions';
+                }
               }
             }
             break;

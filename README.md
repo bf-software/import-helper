@@ -2,7 +2,9 @@
 
 Lets you blast through the tedious chore of manually adding import statements to the top of your typescript, javascript, and svelte modules. The process is simple: first you find your module using the search, then you either pick a symbol or use an alias. You also get editor commands that let you quickly jump up to your import section and back down to your code. Import Helper supplements vscode's built-in auto-import mechanism. These commands are among my most often used while developing. I expect they will become the same for you!
 
-![Import Helper Demo Animation](docs/screenShots/screenToGif/main-addSymbolImport.gif?raw=true)
+![Import Helper Demo Animation](https://github.com/bf-software/import-helper/blob/main/docs/screenShots/screenToGif/main-addSymbolImport.gif?raw=true)
+
+<p style="text-align: center;"><a href="https://www.youtube.com/watch?v=BX_zH0-KL2Q">☆ ☆ ☆  Watch the video walkthrough. ☆ ☆ ☆</a></p>
 
 ## Main Commands
 
@@ -76,7 +78,7 @@ the good (about vscode's built-in auto-import)
 the bad (about vscode's built-in auto-import)
 
 - vscode works backwards: auto-import forces you to think about the symbol first, when it's often easier to think about the module first.
-- vscode has no limited searching capability -- you usually need to type the entire symbol you want to import
+- vscode has limited searching capability -- you usually need to type the entire symbol you want to import
 - vscode can't auto-import using module aliases, or symbol aliases
 
 Import Helper fills in the gaps left by vscode's auto-import features by allowing you to find the module you need first, and then letting you search a list of symbols from that module only.  It also lets you search for module and symbol aliases which facilitates the use of standard aliases throughout your code.
@@ -87,7 +89,7 @@ These commands are all accessible via buttons on the Import Helper toolbar.
 
 ### Show All ┊ `*`
 
-Shows all modules, and symbols available to your project (only available in Step 1 of Import Helper)
+Shows all modules and symbols available to your project (only available in Step 1 of Import Helper)
 
 ### Show All Modules ┊ `'*`
 
@@ -139,6 +141,17 @@ shows modules that are not referenced by your project code
 
 ## Release Notes
 
-### 0.7.1
+### v0.7.2
+
+new features:
+* moved the `Open Module` and `Show All References` buttons from the toolbar, to the individual items found by the search
+
+fixed some behind-the-scenes issues:
+* modifying, creating and adding modules inside of symlinked project folders were not updating the list of searchable modules
+* .svelte files that hadn't yet been imported into the project were not available in the modules list
+* fixed the link to the repository in the vscode extension marketplace
+
+
+### v0.7.1
 
 initial release.

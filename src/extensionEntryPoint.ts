@@ -39,9 +39,11 @@ import * as vs from './common/vscodeSupport';
 import * as plainQuickPick from './plainQuickPick';
 import * as addImportAPI from './importHelperApi';
 import * as ss from './common/systemSupport';
-// import * as es from './common/errorSupport';
+import * as as from './appSupport';
+import { projects } from './project';
+//import * as es from './common/errorSupport';
 
-// es.initEntryPoint();
+//es.initEntryPoint();
 
 // globals for debugging
 (global as any).$vscode = vscode;
@@ -59,6 +61,7 @@ export function activate(context: vscode.ExtensionContext) {
 	vs.globals.globalStorage = context.globalState;
 	vs.globals.extensionEntryPointPath = ss.internalizePath(context.extensionPath)+'out-bundle/';
 
+  as.initConfiguration();
   addImportUI.init();
 
 	context.subscriptions.push(
@@ -104,7 +107,42 @@ export function activate(context: vscode.ExtensionContext) {
 
     vscode.workspace.onDidCloseTextDocument((vscodeTextDocument: vscode.TextDocument) => {
 			docs.closeDocument(vscodeTextDocument);
-		})
+		}),
+
+    vscode.workspace.onDidDeleteFiles( (event: vscode.FileDeleteEvent) => {
+      for (let uri of event.files) {
+        let moduleFile = ss.internalizeFile(uri.fsPath);
+        let modulePath = ss.extractPath(moduleFile);
+        let foundProject = projects.byModulePath(modulePath);
+        if (foundProject)
+          foundProject.value.isDirty = true;
+      }
+    }),
+
+    vscode.workspace.onDidRenameFiles( (event: vscode.FileRenameEvent) => {
+      for (let uri of event.files) {
+        let newModuleFile = ss.internalizeFile(uri.newUri.fsPath);
+        let oldModuleFile = ss.internalizeFile(uri.oldUri.fsPath);
+        let oldModulePath = ss.extractPath(oldModuleFile);
+        let foundProject = projects.byModulePath(oldModulePath);
+        if (foundProject)
+          foundProject.value.moduleRenamed(oldModuleFile, newModuleFile);
+      }
+    }),
+
+    vscode.workspace.onDidSaveTextDocument( (textDocument: vscode.TextDocument) => {
+      let moduleFile = ss.internalizeFile(textDocument.uri.fsPath);
+      let modulePath = ss.extractPath(moduleFile);
+      let foundProject = projects.byModulePath(modulePath);
+      if (foundProject)
+        foundProject.value.moduleContentChanged(moduleFile);
+    }),
+
+    vscode.workspace.onDidChangeConfiguration( (event: vscode.ConfigurationChangeEvent) => {
+      if (event.affectsConfiguration('import-helper')) {
+        as.initConfiguration();
+      }
+    })
 
 	);
 

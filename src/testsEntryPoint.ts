@@ -9,9 +9,10 @@ import './moduleParser.test';
 import './importStatementParser.test';
 import './token.test';
 
+
 export async function run(): Promise<void> {
 
-  // wait for vscode's internal errors to be finished
+  console.log(`\n\nwaiting for vscode's internal uncaught errors to finish displaying...\n\n`);
   await ss.sleep(1000);
 
   await qt.start({

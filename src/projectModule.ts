@@ -317,9 +317,9 @@ export class SourceModules extends cs.FfMap<string,SourceModule> {
     this.initPaths();
 
     if (this.project.config) {
-      // if we have a config file, the files will already gathered for us by the typescript api
+      // if we have a config file, the *.ts files will already gathered for us by the typescript api
       for (let file of this.project.config.rawFiles) {
-        file = ss.forwardSlashes( file );
+        file = ss.internalizeFile( file );
         if (!this.isExcludedByRootPaths( file ) && !this.isExcludedByPaths( file ) )
           this.addByModuleFile( file );
       }
@@ -330,16 +330,15 @@ export class SourceModules extends cs.FfMap<string,SourceModule> {
       // we'll have to get our own files
       let foundURIs = await vscode.workspace.findFiles('**/'+vs.getWorkspaceRelativePath(this.project.projectPath)+'**/*{'+ss.commas(cCodeExtensions)+'}', '**/{node_modules'+ss.prefix(',',ss.commas(this.excludePaths))+'}/**');
       for (let uri of foundURIs)
-        if (! this.isExcludedByRootPaths( ss.forwardSlashes(uri.fsPath) ) )
-          this.addByModuleFile( ss.forwardSlashes(uri.fsPath ) );
+        if (! this.isExcludedByRootPaths( ss.internalizeFile(uri.fsPath) ) )
+          this.addByModuleFile( ss.internalizeFile(uri.fsPath ) );
     }
 
-    let additionalFileExtensions = vscode.workspace.getConfiguration('import-helper.extentions',docs.active?.vscodeDocument?.uri).get<string>('additional') ?? '';
-    additionalFileExtensions = ss.commas(additionalFileExtensions,...as.cSvelteExtensions);
-    let foundURIs = await vscode.workspace.findFiles('**/'+vs.getWorkspaceRelativePath(this.project.projectPath)+'**/*{'+additionalFileExtensions+'}', '**/{node_modules'+ss.prefix(',',ss.commas(this.excludePaths))+'}/**');
+    let additionalExtensionsString = ss.commas(...as.additionalExtensions,...as.cSvelteExtensions);
+    let foundURIs = await vscode.workspace.findFiles('**/'+vs.getWorkspaceRelativePath(this.project.projectPath)+'**/*{'+additionalExtensionsString+'}', '**/{node_modules'+ss.prefix(',',ss.commas(this.excludePaths))+'}/**');
     for (let uri of foundURIs)
-      if (! this.isExcludedByRootPaths( ss.forwardSlashes(uri.fsPath) ) )
-        this.addByModuleFile( ss.forwardSlashes(uri.fsPath ) );
+      if (! this.isExcludedByRootPaths( ss.internalizeFile(uri.fsPath) ) )
+        this.addByModuleFile( ss.internalizeFile(uri.fsPath ) );
 
   }
 

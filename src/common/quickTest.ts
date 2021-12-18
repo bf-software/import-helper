@@ -4,7 +4,7 @@
  * a simple testing environment targeting typescript node applications.  Unlike other javascript test runners, this
  * does no dynamic bootstrapping of test files.  Instead, test files are imported and loaded just like any ES6 node
  * module.  That way, all tests run in the exact same environment that the application uses.  For example if you use
- * a bundler to take all .ts and .tsx files transple and produce a single .js file, that's what you should do to the
+ * a bundler to take all .ts and .tsx files transpile and produce a single .js file, that's what you should do to the
  * test code as well.  Special care has been taken to always produce errors that map to the correct .ts/.tsx file
  * in your application's code.
  *
@@ -16,7 +16,7 @@
  * import * as qt from 'quickTest';
  * qt.module( () => {
  *   qt.test('one test', () => {
- *     qt.value(1+1).shouldEqual(2);
+ *     qt.testValue(1+1).shouldEqual(2);
  *   })
  * });
  * ``
@@ -44,7 +44,7 @@
  * The second phase is the "execution phase".  All of the tests gathered in the first phase are run one after the other, in the
  * order in which they were found. Any tests can be skipped by prepending an X to the `module(), section() or test()` functions
  * like so: `Xmodule, Xsection() or Xtest()`.  If you only want to run a certain few tests, prepend an O to the `module(),
- * section() or test()` functions like so: `Omodule(), Osection() or Otest()`.  Any async functions params passed to `test(),
+ * section() or test()` functions like so: `Omodule(), Osection() or Otest()`.  Any async functions passed to `test(),
  * beforeXXX(), or afterXXX()`, will be executed and waited for so that all tests, including asynchronous ones, are run one
  * after the other.
  *
@@ -53,7 +53,6 @@
 import * as ss from './systemSupport';
 import * as cs from './collectionSupport';
 import * as fsp from 'fs/promises';
-import * as nodePath from 'path';
 import { L } from './systemSupport';
 import ch from 'chalk';
 import * as es from './errorSupport';
@@ -62,8 +61,8 @@ const cEsc = '\u001b';
 const cIndentCharacter = '\u00A0'; // <- non breaking space
 const cIndentSizeInCharacters = 2;
 const skipColor = ch.blue;
-const cThumbsUp = '\u{1F44D}\uFE0E'; // <-- the \uFE0E keeps special characters from rendering as emojis, and instead uses normal text characters
-const cThumbsDown = '\u{1F44E}\uFE0E';
+//const cThumbsUpChar = '\u{1F44D}\uFE0E'; // <-- the \uFE0E keeps special characters from rendering as emojis, and instead uses normal text characters
+//const cThumbsDownChar = '\u{1F44E}\uFE0E';
 const cShouldBeIcon = '🠞'; // ☑ ➡ ► 🠞 🢂 ⮞
 const cBadValueIcon = '⚠'; // ☒ ×
 
@@ -71,7 +70,6 @@ const cBadValueIcon = '⚠'; // ☒ ×
 let testCount = 0;
 let isOnlyTestsExist = false;
 let causedIsSkippedTests: ChildTestItem[] = [];
-let logToFile = '';
 
 class TestValueError extends Error {
 }

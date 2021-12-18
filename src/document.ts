@@ -70,7 +70,14 @@ export class Document {
    * that one.
    */
   public async syncProject( onFinishedLoading: () => void ) {
-    let found = await projects.byModulePath(this.path);
+    let found = projects.byModulePath(this.path);
+    if (found) {
+      if (found.value.isDirty) {
+        projects.delete(found.key);
+        found = await projects.addProject(this.path);
+      }
+    } else
+      found = await projects.addProject(this.path);
     if (! found)
       throw new Error('syncProject: could not find or load the project.');
     projects.onFinishedLoading = onFinishedLoading;
@@ -78,7 +85,7 @@ export class Document {
   }
 
   public get file():string {
-    return ss.forwardSlashes(this.vscodeDocument?.fileName ?? '');
+    return ss.internalizeFile(this.vscodeDocument?.fileName ?? '');
   }
 
   public get path():string {

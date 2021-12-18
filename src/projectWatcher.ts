@@ -21,7 +21,7 @@ export class ProjectWatcher {
   /**
    * to keep this simple, we watch for changes to any file or dir in the project's
    * dir and sub dirs. If a file's content changes, we will update the project objects
-   * to reflect the change, for any other change, like newly created file/dirs, or delete
+   * to reflect the change, for any other change, like newly created file/dirs, or deleted
    * files/dirs, we will simply set the project as dirty, and it will re-scan everything
    * after a short delay.
    */
@@ -41,17 +41,8 @@ export class ProjectWatcher {
     });
 
     watcher.onDidChange(uri => {
-      let fileOrDir = ss.internalizeFile(uri.fsPath);
-      let absoluteShortenedModuleSpecifier = new as.ModuleSpecifierJuggler(fileOrDir).shortenedModuleSpecifier;
-      // if the file that changes was a sourceModule, clear out all of the `...UsedBy..`s that this module was pointing to
-      let sourceModule = this.project.sourceModules.byUniversalPathShortenedModuleSpecifier(absoluteShortenedModuleSpecifier)?.value;
-      if (sourceModule) {
-        this.project.sourceModuleImportUsedBySourceModules.deleteKey2(sourceModule);
-        this.project.cleanUnusedProjectImports();
-        this.project.sourceModuleUsedBySourceModules.deleteKey2(sourceModule);
-        this.project.nodeModuleUsedBySourceModules.deleteKey2(sourceModule);
-        this.project.scanSourceModuleForImports(sourceModule);
-      }
+      let fileOrPath = ss.internalizeFile(uri.fsPath);
+      this.project.moduleContentChanged(fileOrPath);
     });
 
     watcher.onDidCreate(uri => {

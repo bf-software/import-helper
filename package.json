@@ -3,13 +3,13 @@
 	"publisher": "bf-s",
 	"displayName": "Import Helper",
 	"description": "quickly add imports for modules and symbols to the top of your code (for .ts, .js, .tsx, .jsx, & .svelte)",
-	"version": "0.7.1",
+	"version": "0.7.2",
 	"icon": "out-bundle/images/BF-Software/icon.png",
 	"engines": {
-		"vscode": "^1.62.0"
+		"vscode": "^1.63.0"
 	},
 	"repository": {
-		"url": "https://github.com/bf-software/import-helper/blob/main/",
+		"url": "https://github.com/bf-software/import-helper/",
 		"type": "git"
 	},
 	"categories": [
@@ -28,12 +28,15 @@
 				"import-helper.moduleSpecifier.pathStyle": {
 					"type": "string",
 					"scope": "window",
-          "enum":["use-vscode-settings", "non-relative-unless-same"],
-          "markdownDescription": "leave this blank, or select `use-vscode-settings` to defer to `TypeScript/JavaScript › Preferences: Import Module Specifier`.",
+					"enum": [
+						"use-vscode-settings",
+						"non-relative-unless-same"
+					],
+					"markdownDescription": "leave this blank, or select `use-vscode-settings` to defer to `TypeScript/JavaScript › Preferences: Import Module Specifier`.",
 					"markdownEnumDescriptions": [
-            "uses vscode's setting in `TypeScript/JavaScript › Preferences: Import Module Specifier`.",
-            "prefers non-relative paths, unless the importing module and imported module are in the same non-relative path hierarchy."
-          ]
+						"uses vscode's setting in `TypeScript/JavaScript › Preferences: Import Module Specifier`.",
+						"prefers non-relative paths, unless the importing module and imported module are in the same non-relative path hierarchy."
+					]
 				},
 				"import-helper.paths.exclude": {
 					"type": "string",
@@ -109,31 +112,20 @@
 		"dev-watch": "webpack --config ./webpack.config.mjs --watch",
 		"prod-build": "cross-env NODE_ENV=production webpack --config ./webpack.config.mjs",
 		"prod-map-explorer-html": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map",
-    "prod-map-explorer-list": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map --tsv",
+		"prod-map-explorer-list": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map --tsv",
 		"prod-vsce-deploy": "vsce package --no-dependencies --out ./deploy"
 	},
 	"devDependencies": {
-		"@types/chai": "^4.2.22",
 		"@types/glob": "^7.1.4",
-		"@types/mocha": "^9.0.0",
 		"@types/node": "^16.11.7",
 		"@types/semver": "^7.3.9",
 		"@types/strip-comments": "^2.0.1",
-		"@types/vscode": "^1.61.0",
-		"@typescript-eslint/eslint-plugin": "^5.3.1",
-		"@typescript-eslint/parser": "^5.3.1",
-		"ava": "^3.15.0",
-		"chai": "^4.3.4",
+		"@types/vscode": "^1.63.0",
 		"clean-terminal-webpack-plugin": "^3.0.0",
 		"clean-webpack-plugin": "^4.0.0",
-		"copy-webpack-plugin": "^9.1.0",
+		"copy-webpack-plugin": "^10.1.0",
 		"cross-env": "^7.0.3",
-		"eslint": "^8.0.0",
 		"glob": "^7.2.0",
-		"http-server": "^14.0.0",
-		"meriyah": "^4.2.0",
-		"mocha": "^9.1.2",
-		"mochawesome": "^7.0.1",
 		"ts-loader": "^9.2.6",
 		"vsce": "^2.3.0",
 		"vscode-codicons": "^0.0.17",
@@ -141,6 +133,9 @@
 		"webpack": "^5.64.0",
 		"webpack-cli": "^4.9.1"
 	},
+  "dependencies-comments": {
+    "chalk": "can't use v5.0.0 yet because it uses `import from 'node:process';` which vscode 1.63.0 can't handle because of the `node:`."
+  },
 	"dependencies": {
 		"chalk": "^4.1.2",
 		"semver": "^7.3.5",

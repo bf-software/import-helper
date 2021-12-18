@@ -18,7 +18,8 @@ const cSGSourceModule = 2;
 const cSGNodeModule = 3;
 const cSGProjectSymbol = 4;
 
-
+let moduleItemButtons: vscode.QuickInputButton[] = [];
+export let settings = { moduleItemButtons };
 
 export function normalSort(items:ReferenceCountQuickPickItem[]) {
 	items.sort( (a,b) => {
@@ -95,6 +96,7 @@ export abstract class ProjectModuleQuickPickItem extends ReferenceCountQuickPick
 		public projectModule:ProjectModule
 	) {
 	  super(module);
+    this.buttons = settings.moduleItemButtons;
 	}
 }
 

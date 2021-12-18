@@ -183,7 +183,7 @@ export class ProjectConfig {
       }
 
     this.rootDirs.clear();
-    this.rootDirs.push(...this.normalizePaths(parsedConfig.options.rootDirs ?? []));
+    this.rootDirs.push(...this.internalizePaths(parsedConfig.options.rootDirs ?? []));
     this.includes = (parsedConfig as any).configFileSpecs?.includeSpecs as string[] ?? [];
     this.excludes = (parsedConfig as any).configFileSpecs?.excludeSpecs as string[] ?? [];
     this.rawFiles = parsedConfig.fileNames;
@@ -195,8 +195,8 @@ export class ProjectConfig {
     this.rawFiles = [];
   }
 
-  private normalizePaths(paths: string[]): string[] {
-    return paths.map(path => ss.internalizePath(ss.forwardSlashes(path)));
+  private internalizePaths(paths: string[]): string[] {
+    return paths.map(path => ss.internalizePath(path));
   }
 }
 class RootDirs extends cs.FfArray<string> {

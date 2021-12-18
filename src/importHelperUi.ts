@@ -21,8 +21,9 @@ interface ProjectFileQuickPickItem {
 
 export class ImportHelperUi {
   private api = new ImportHelperApi();
-  private moduleQuickPick: PlainQuickPick<qpi.ProjectModuleQuickPickItem> | null = null;
-  private symbolQuickPick: PlainQuickPick<qpi.ProjectModuleQuickPickItem> | null = null;
+  private moduleQuickPick: PlainQuickPick<qpi.ProjectModuleQuickPickItem> | undefined;
+  private moduleQuickPickItemButtons: vscode.QuickInputButton[] = [];
+  private symbolQuickPick: PlainQuickPick<qpi.ProjectModuleQuickPickItem> | undefined;
   private openModuleKey: string = '';
   private showReferencesKey: string = '';
   private lastModuleSearchValue: string = '';
@@ -135,13 +136,13 @@ export class ImportHelperUi {
    private disposeModuleQuickPick() {
      this.moduleQuickPick?.hide();
      this.moduleQuickPick?.dispose();
-     this.moduleQuickPick = null;
+     this.moduleQuickPick = undefined;
    }
 
    private disposeSymbolQuickPick() {
      this.symbolQuickPick?.hide();
      this.symbolQuickPick?.dispose();
-     this.symbolQuickPick = null;
+     this.symbolQuickPick = undefined;
    }
 
    private disposeAllQuickPicks() {
@@ -157,20 +158,13 @@ export class ImportHelperUi {
     return new Promise<qpi.ProjectModuleQuickPickItem | null>( resolve => {
 
       this.moduleQuickPick = new PlainQuickPick<qpi.ProjectModuleQuickPickItem>();
-      // note: this is an example of changing the toolbar buttons in reponse to the active item changing
-      // this.quickPickDisposables.push(
-      //   this.quickPick.onDidChangeActive( () => {
-      //     if (this.quickPick!.activeItems[0] instanceof ImportStatementQuickPickItem)
-      //       this.quickPick!.buttons = [{iconPath:new vscode.ThemeIcon('location'), tooltip:'Locate modules using the selected import.'}];
-      //     else
-      //       this.quickPick!.buttons = [];
-      //   })
-      // )
+
+      qpi.settings.moduleItemButtons = this.getItemButtons(mode);
 
       this.moduleQuickPick.onDidHide(() => {
         this.disposeModuleQuickPick();
         resolve(null);
-      })
+      });
 
       // this.moduleQuickPick.onDidChangeSelection(selection => {
       //   if (selection[0].isSelectable && !this.isFreshModuleSearch)
@@ -180,7 +174,7 @@ export class ImportHelperUi {
       this.moduleQuickPick.onDidAccept(() => {
         if (this.moduleQuickPick!.selectedItems[0].isSelectable)
           resolve(this.moduleQuickPick!.selectedItems[0]);
-      })
+      });
 
       this.moduleQuickPick.step = 1;
       let searchInfo = 'Separate terms with space. Use / to search paths. Use { for symbols.';
@@ -205,7 +199,7 @@ export class ImportHelperUi {
         this.changedModuleValue();
       })
 
-      this.moduleQuickPick.buttons = this.getButtons(mode);
+      this.moduleQuickPick.buttons = this.getToolbarButtons(mode);
 
       this.changedModuleValue();
 
@@ -215,7 +209,7 @@ export class ImportHelperUi {
 
   }
 
-  public getButtons(mode: IHMode):PlainQuickPickButtons {
+  public getToolbarButtons(mode: IHMode):PlainQuickPickButtons {
     let buttons = new PlainQuickPickButtons();
     buttons.iconPath = globals.extensionEntryPointPath + 'images/Microsoft/';
     buttons.add('show all (*)', 'showAll.svg', () => {
@@ -230,20 +224,24 @@ export class ImportHelperUi {
       this.moduleQuickPick!.value = '{*';
       this.changedModuleValue();
     });
-    buttons.add('open module' + ss.infix(' (',this.openModuleKey,')'), 'openModule--codicon-folder-opened.svg', () => {
-      if (this.moduleQuickPick?.activeItems[0]) {
-        this.api.openModule(this.moduleQuickPick.activeItems[0]);
-        this.disposeAllQuickPicks();
-      }
-    });
-    buttons.add('show all references' + ss.infix(' (',this.showReferencesKey,')'), 'showAllReferences--codicon-references.svg', () => {
-      if (this.moduleQuickPick?.activeItems[0]) {
-        this.api.showReferences(this.moduleQuickPick.activeItems[0]);
-        this.disposeAllQuickPicks();
-      }
-    });
     buttons.add('show unused modules', 'showUnusedModules--codicon-references.svg', () => {
       this.api.showUnusedModules();
+      this.disposeAllQuickPicks();
+    });
+    return buttons;
+  }
+
+  public getItemButtons(mode: IHMode):PlainQuickPickButtons {
+    let buttons = new PlainQuickPickButtons();
+    buttons.iconPath = globals.extensionEntryPointPath + 'images/Microsoft/';
+    buttons.add('open module' + ss.infix(' (',this.openModuleKey,')'), 'openModule--codicon-folder-opened.svg', (item) => {
+      if (item instanceof qpi.ProjectModuleQuickPickItem)
+        this.api.openModule(item);
+      this.disposeAllQuickPicks();
+    });
+    buttons.add('show all references' + ss.infix(' (',this.showReferencesKey,')'), 'showAllReferences--codicon-references.svg', (item) => {
+      if (item instanceof qpi.ProjectModuleQuickPickItem)
+        this.api.showReferences(item);
       this.disposeAllQuickPicks();
     });
     return buttons;
@@ -254,6 +252,9 @@ export class ImportHelperUi {
     if (this.moduleQuickPick) {
       if (this.moduleQuickPick.activeItems[0])
         this.api.openModule(this.moduleQuickPick.activeItems[0]);
+    } else if (this.symbolQuickPick) {
+      if (this.symbolQuickPick.activeItems[0])
+        this.api.openModule(this.symbolQuickPick.activeItems[0]);
     } else {
       this.startQuickPick(IHMode.openModule);
     }
@@ -263,6 +264,9 @@ export class ImportHelperUi {
     if (this.moduleQuickPick) {
       if (this.moduleQuickPick.activeItems[0])
         this.api.showReferences(this.moduleQuickPick.activeItems[0]);
+    } else if (this.symbolQuickPick) {
+      if (this.symbolQuickPick.activeItems[0])
+        this.api.showReferences(this.symbolQuickPick.activeItems[0]);
     } else {
       this.startQuickPick(IHMode.showReferences);
     }
