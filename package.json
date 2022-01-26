@@ -113,7 +113,7 @@
 		"prod-build": "cross-env NODE_ENV=production webpack --config ./webpack.config.mjs",
 		"prod-map-explorer-html": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map",
 		"prod-map-explorer-list": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map --tsv",
-		"prod-vsce-deploy": "mkdir ./deploy && vsce package --no-dependencies --out ./deploy"
+		"prod-vsce-deploy": "mkdirp ./deploy && vsce package --no-dependencies --out ./deploy"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.4",
@@ -126,6 +126,7 @@
 		"copy-webpack-plugin": "^10.1.0",
 		"cross-env": "^7.0.3",
 		"glob": "^7.2.0",
+		"mkdirp": "^1.0.4",
 		"source-map-explorer": "^2.5.2",
 		"ts-loader": "^9.2.6",
 		"vsce": "^2.3.0",
