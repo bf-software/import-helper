@@ -65,7 +65,7 @@ const skipColor = ch.blue;
 //const cThumbsUpChar = '\u{1F44D}\uFE0E'; // <-- the \uFE0E keeps special characters from rendering as emojis, and instead uses normal text characters
 //const cThumbsDownChar = '\u{1F44E}\uFE0E';
 const cShouldBeIcon = '🠞'; // ☑ ➡ ► 🠞 🢂 ⮞
-const cBadValueIcon = '⚠'; // ☒ ×
+const cBadValueIcon = '⚠'; // ☒ ×s
 
 
 let testCount = 0;

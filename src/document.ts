@@ -92,7 +92,7 @@ export class Document {
   public parseSearchSymbol(): string {
 
     // grab the text of the source line left of the cursor
-    let pos = this.cursorPos;
+    let pos = this.cursorPos - 1;
     let ch = '';
     let sourceLine = '';
     while ( pos >= 0 ) {

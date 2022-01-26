@@ -113,7 +113,7 @@
 		"prod-build": "cross-env NODE_ENV=production webpack --config ./webpack.config.mjs",
 		"prod-map-explorer-html": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map",
 		"prod-map-explorer-list": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map --tsv",
-		"prod-vsce-deploy": "vsce package --no-dependencies --out ./deploy"
+		"prod-vsce-deploy": "mkdir ./deploy && vsce package --no-dependencies --out ./deploy"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.4",
@@ -126,6 +126,7 @@
 		"copy-webpack-plugin": "^10.1.0",
 		"cross-env": "^7.0.3",
 		"glob": "^7.2.0",
+		"source-map-explorer": "^2.5.2",
 		"ts-loader": "^9.2.6",
 		"vsce": "^2.3.0",
 		"vscode-codicons": "^0.0.17",
@@ -133,9 +134,9 @@
 		"webpack": "^5.64.0",
 		"webpack-cli": "^4.9.1"
 	},
-  "dependencies-comments": {
-    "chalk": "can't use v5.0.0 yet because it uses `import from 'node:process';` which vscode 1.63.0 can't handle because of the `node:`."
-  },
+	"dependencies-comments": {
+		"chalk": "can't use v5.0.0 yet because it uses `import from 'node:process';` which vscode 1.63.0 can't handle because of the `node:`."
+	},
 	"dependencies": {
 		"chalk": "^4.1.2",
 		"semver": "^7.3.5",
