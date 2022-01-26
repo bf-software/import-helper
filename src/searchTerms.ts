@@ -104,18 +104,22 @@ export class ModuleSearchTerms extends cs.FfArray<ModuleSearchTerm> {
 	}
 
   /**
-	 * this returns false as soon as a term fails to match the target. Special care must
-	 * be taken when searching for extensions, or extension-like things.  For example, if
-	 * a developer user chooses to name modules like "screen.api.configuration.ts", we want a
-	 * module search looking for `config` to find the example, but `ts` to not find the example.
-	 * `ts` would return too many results.  However if the user wants to look in only `.ts` files
-	 * we should allow a term of `.ts` to find the results.  The bottom line is that we want
-	 * `config` and `.config` to return the example above, but only want `.ts` to also return the
-	 * example, not `ts` without a dot.
+   * pass the properties of a module/symbol to this to determine if all search terms match it. As soon
+   * as any search terms fail to match, this returns false.
+   *
 	 */
 	public termsMatch(moduleName:string, modulePath:string, symbolName:string='', symbolAlias:string='') {
 		if (this.length == 0)
 			return false;
+
+	  /*
+      Special care must be taken when searching for extensions, or extension-like things.  For example, if
+	    a user chooses to name their modules like "screen.api.configuration.ts", we want a module search
+      looking for `config` to find the example, but `ts` to not find the example. `ts` would return too many
+      results.  However if the user wants to look in only `.ts` files we should allow a term of `.ts` to find
+      the results.  The bottom line is that we want `config` and `.config` to return the example above, but
+      only want `.ts` to also return the example, not `ts` without a dot.
+    */
 
     let lowerCaseModuleName = moduleName.toLowerCase();
 		let lowerCaseModulePath = modulePath.toLowerCase();
@@ -134,8 +138,7 @@ export class ModuleSearchTerms extends cs.FfArray<ModuleSearchTerm> {
 
     let isSymbolItem = lowerCaseSymbolName || lowerCaseSymbolAlias;
 
-    // check every term against all parts of the potential item, if anything fails to match, we return false.
-		for (let term of this) {
+		for (let term of this) { // <-- check every term against all parts of the potential item, if anything fails to match, we return false.
 
       if (term.type == MTT.moduleName || (!isSymbolItem && term.type == MTT.any)) {
 			  let searchModuleName = lowerCaseModuleNameNoExt;

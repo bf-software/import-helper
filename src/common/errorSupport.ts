@@ -28,6 +28,7 @@ import * as fs from 'fs';
 import * as ss from './systemSupport';
 import * as nodePath from 'path';
 import * as url from 'url';
+import * as ns from './nodeSupport';
 
 interface OriginalLocation {
   file: string,
@@ -54,7 +55,7 @@ export class ErrorSettings {
    * include bootstrap code in error stacks.  The bootstrap code is everything above the entry point of the project.
    */
   public showBootstrapStack = false;
-  public entryPointFile = ss.getEntryPointFile();
+  public entryPointFile = ns.getEntryPointFile();
   public postBootstrapEntryPointFile = '';
   public get entryPointPath():string {
     return ss.extractPath(this.entryPointFile);
@@ -79,7 +80,7 @@ export function initEntryPoint(options?:{levelsAbove?:number, relativePathToProj
   if (typeof options?.relativePathToProjectRoot == 'string') {
     item = getCallerLocation();
     if (item)
-      settings.projectRootPath = ss.resolvePath( ss.extractPath(item.originalLocation?.file ?? item.file), options.relativePathToProjectRoot);
+      settings.projectRootPath = ns.resolvePath( ss.extractPath(item.originalLocation?.file ?? item.file), options.relativePathToProjectRoot);
   }
   if (!item || levelsAbove > 1)
     item = getCallerLocation(levelsAbove);
@@ -103,7 +104,7 @@ class SourceLocator {
     public file:string
   ) {
     let mapFile = file + '.map';
-    if (ss.fileExistsSync(mapFile)) {
+    if (ns.fileExistsSync(mapFile)) {
       let rawSourceMap = JSON.parse(fs.readFileSync(mapFile, {encoding: 'utf8'} ) );
       this.smc = new SourceMapConsumer(rawSourceMap)
       this.isValid = true;
@@ -118,7 +119,7 @@ class SourceLocator {
     let originalPosition = this.smc!.originalPositionFor({line,column});
     if (typeof originalPosition.source == 'string'){
       return {
-        file: ss.resolveFile(this.filePath, originalPosition.source),
+        file: ns.resolveFile(this.filePath, originalPosition.source),
         line: originalPosition.line,
         column: originalPosition.column
       }
@@ -134,12 +135,14 @@ class SourceLocator {
 let sourceLocators = new cs.FfMap<string,SourceLocator>();
 
 export function formatStackItem(item:StackItem) {
-  let file = (item.originalLocation?.file ?? item.file);
-  let line = (item.originalLocation?.line ?? item.line);
-  let column = (item.originalLocation?.column ?? item.column);
+  let file = (item.originalLocation ? item.originalLocation.file : item.file);
+  let line = (item.originalLocation ? item.originalLocation.line : item.line);
+  let column = (item.originalLocation ? item.originalLocation.column : item.column);
   if (ss.isAbsolutePath(file))
-    file = ss.getRelativePath(ss.ifBlank(settings.projectRootPath, settings.entryPointPath) , file);
-  return `${file}:${line}:${column}`;
+    file = ns.getRelativePath(ss.ifBlank(settings.projectRootPath, settings.entryPointPath) , file);
+  let result = `${file}:${line}:${column}`;
+  result += ss.prefix('    ⮡ ', ss.concatWS('.',item.className, ss.suffix(item.functionName ?? '','()') ) );
+  return result;
 }
 
 

@@ -3,7 +3,7 @@
 	"publisher": "bf-s",
 	"displayName": "Import Helper",
 	"description": "quickly add imports for modules and symbols to the top of your code (for .ts, .js, .tsx, .jsx, & .svelte)",
-	"version": "0.7.2",
+	"version": "0.8.0",
 	"icon": "out-bundle/images/BF-Software/icon.png",
 	"engines": {
 		"vscode": "^1.63.0"

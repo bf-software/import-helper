@@ -1,6 +1,7 @@
 import * as ss from './systemSupport';
 import { L, U } from './systemSupport';
 import * as qt from './quickTest';
+import * as ns from './nodeSupport';
 
 qt.module( () => {
 
@@ -155,9 +156,12 @@ qt.module( () => {
       2
       3`)).shouldEqual(3);
 
+      qt.testValue(ss.countLines(`1
+      `)).shouldEqual(2);
+
       qt.testValue(ss.countLines('1')).shouldEqual(1);
 
-      qt.testValue(ss.countLines('')).shouldEqual(0);
+      qt.testValue(ss.countLines('')).shouldEqual(1);
 
     });
 
@@ -196,8 +200,8 @@ qt.module( () => {
         let file = qt.globals.stagingPath+'/readFileBytes.txt';
         let encoder = new TextEncoder();
         let testText = 'This is a test\x00this is not part of the test.';
-        await ss.writeFile(file, encoder.encode(testText) );
-        let bytes = await ss.readFileBytes(file,15);
+        await ns.writeFile(file, encoder.encode(testText) );
+        let bytes = await ns.readFileBytes(file,15);
         qt.testValue( bytes.toString() ).shouldEqual(testText.substr(0,15));
       });
 

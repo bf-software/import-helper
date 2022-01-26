@@ -11,50 +11,50 @@
  *
  *   Diagram of important objects and collections:
  *
- *                                            object diagram (arrows point to object being used)
- *     +----------------------------------------------------------------------------------------------------------------------------------+
- *     |                                                           Project                                                                |
- *     |                                                       {@link Project}                                                            |
- *     +----------------------------------------------------------------------------------------------------------------------------------+
- *     |                                                                                                                                  |
- *     |                                                                                                                                  |
- *     |                                              +--------------------------------+                                                  |
- *     |                                              |  sourceModules: SourceModules  |                                                  |
- *     |                                              | {@link Project.sourceModules}: | <--------------+                                 |
- *     |                                              |     {@link SourceModules}      |                |                                 |
- *     |                                              +-----------+-----+---+-----+----+                |                                 |
- *     |                                                          |     |   |    |                      +                                 |
- *     |                                                          |     |   |    +-----------> #sourceModuleUsedBySourceModules           |
- *     |                                                          |     |   |          {@link Project.sourceModuleUsedBySourceModules}    |
- *     |                                                          |     |   |                                                             |
- *     |                                                          |     |   |                                                             |
- *     |                                                          |     |   |                                                             |
- *     |         nodeModuleUsedBySourceModules <------------------+     |   +------------------> sourceModuleImportUsedBySourceModules    |
- *     |      {@link Project.nodeModuleUsedBySourceModules}             |          {@link Project.sourceModuleImportUsedBySourceModules}  |
- *     |                 +                                              |                                                         +       |
- *     |                 |                                              |                                                         |       |
- *     |                 |                                              |                                                         |       |
- *     |                 |      +----------------------------+          |     +--------------------------------------------+      |       |
- *     |                 |      |  nodeModules: NodeModules  |          |     | sourceModuleImports: SourceModuleImports   |      |       |
- *     |                 +----> |{@link Project.nodeModules}:|          |     |   {@link Project.sourceModuleImports}:     | <----+       |
- *     |                        |    {@link NodeModules}     |          |     |       {@link SourceModuleImports}          |              |
- *     |                        +----------------------------+          |     +--------------------------------------------+              |
- *     |                                                                |                                                                 |
- *     |                                                                |                                                                 |
- *     |                                                                |                                                                 |
- *     |                                                                +-------------> sourceSymbolImportUsedBySourceModules             |
- *     |                                                                         {@link Project.sourceSymbolImportsUsedBySourceModules}   |
- *     |                                                                                                                         +        |
- *     |                                                                                                                         |        |
- *     |                                                                                                                         |        |
- *     |                                                                     +--------------------------------------------+      |        |
- *     |                                                                     | projectSymbolImports: SourceSymbolImports  |      |        |
- *     |                                                                     |    {@link Project.sourceSymbolImports}:    | <----+        |
- *     |                                                                     |        {@link SourceSymbolImports}         |               |
- *     |                                                                     +--------------------------------------------+               |
- *     |                                                                                                                                  |
- *     |                                                                                                                                  |
- *     +----------------------------------------------------------------------------------------------------------------------------------+
+ *                                         object diagram (arrows point to object being used)
+ *     +------------------------------------------------------------------------------------------------------------------------------+
+ *     |                                                        Project                                                               |
+ *     |                                                    {@link Project}                                                           |
+ *     +------------------------------------------------------------------------------------------------------------------------------+
+ *     |                                                                                                                              |
+ *     |                                                                                                                              |
+ *     |                                          +--------------------------------+                                                  |
+ *     |                                          |  sourceModules: SourceModules  |                                                  |
+ *     |                                          | {@link Project.sourceModules}: | <--------------+                                 |
+ *     |                                          |     {@link SourceModules}      |                |                                 |
+ *     |                                          +-----------+-----+---+----+-----+                |                                 |
+ *     |                                                      |     |   |    |                      +                                 |
+ *     |                                                      |     |   |    +-----------> #sourceModuleUsedBySourceModules           |
+ *     |                                                      |     |   |          {@link Project.sourceModuleUsedBySourceModules}    |
+ *     |                                                      |     |   |                                                             |
+ *     |                                                      |     |   |                                                             |
+ *     |                                                      |     |   |                                                             |
+ *     |     nodeModuleUsedBySourceModules <------------------+     |   +------------------> sourceModuleImportUsedBySourceModules    |
+ *     |  {@link Project.nodeModuleUsedBySourceModules}             |          {@link Project.sourceModuleImportUsedBySourceModules}  |
+ *     |             +                                              |                                                         +       |
+ *     |             |                                              |                                                         |       |
+ *     |             |                                              |                                                         |       |
+ *     |             |      +----------------------------+          |     +--------------------------------------------+      |       |
+ *     |             |      |  nodeModules: NodeModules  |          |     | sourceModuleImports: SourceModuleImports   |      |       |
+ *     |             +----> |{@link Project.nodeModules}:|          |     |   {@link Project.sourceModuleImports}:     | <----+       |
+ *     |                    |    {@link NodeModules}     |          |     |       {@link SourceModuleImports}          |              |
+ *     |                    +----------------------------+          |     +--------------------------------------------+              |
+ *     |                                                            |                                                                 |
+ *     |                                                            |                                                                 |
+ *     |                                                            |                                                                 |
+ *     |                                                            +-------------> sourceSymbolImportUsedBySourceModules             |
+ *     |                                                                     {@link Project.sourceSymbolImportsUsedBySourceModules}   |
+ *     |                                                                                                                     +        |
+ *     |                                                                                                                     |        |
+ *     |                                                                                                                     |        |
+ *     |                                                                 +--------------------------------------------+      |        |
+ *     |                                                                 | projectSymbolImports: SourceSymbolImports  |      |        |
+ *     |                                                                 |    {@link Project.sourceSymbolImports}:    | <----+        |
+ *     |                                                                 |        {@link SourceSymbolImports}         |               |
+ *     |                                                                 +--------------------------------------------+               |
+ *     |                                                                                                                              |
+ *     |                                                                                                                              |
+ *     +------------------------------------------------------------------------------------------------------------------------------+
  */
 
 import { SourceModules, SourceModule, NodeModules, NodeModule } from './projectModule';
@@ -72,6 +72,7 @@ import { ProjectWatcher } from './projectWatcher';
 import * as as from './appSupport';
 import { SourceModuleImports, SourceModuleImport } from './projectModule';
 import { docs } from './document';
+import * as ns from './common/nodeSupport';
 
 /**
  * contains all of the details pertaining to a project, such as configuration info from `package.json`,
@@ -200,7 +201,7 @@ export class Project {
 
   public async init() {
     if (this.packageJsonFile != '') {
-      let packageJson = ss.bufferToString( await ss.readFile(this.packageJsonFile) );
+      let packageJson = ss.bufferToString( await ns.readFile(this.packageJsonFile) );
       let packageObject = JSON.parse(packageJson);
       if (typeof packageObject.dependencies == 'object')
         for (let dependency in packageObject.dependencies) {
@@ -216,8 +217,8 @@ export class Project {
     this.sourceModules.load().then( () => {
       // when the file modules have loaded, kick off anything that was waiting for them
       this.isLoading = false;
-      if (this.projects.onFinishedLoading)
-        this.projects.onFinishedLoading();
+      if (this.projects.onLoadingMilestone)
+        this.projects.onLoadingMilestone(true);
 
       // also kick off the parsing of each source module to find the imports used which can take some time
       this.loadImports();
@@ -247,15 +248,15 @@ export class Project {
 
 
   public getRelativePath(pathOrFile:string):string {
-    return ss.getRelativePath(this.projectPath,pathOrFile);
+    return ns.getRelativePath(this.projectPath,pathOrFile);
   }
 
 
   public async getPackageObject(packageName:string):Promise<any|undefined> {
     for (let nodeModulesPath of this.nodeModulesPaths) {
       let packageJsonFile = nodeModulesPath + packageName + '/package.json';
-      if (await ss.fileExists(packageJsonFile)) {
-        let json = ss.bufferToString( await ss.readFile(packageJsonFile) );
+      if (await ns.fileExists(packageJsonFile)) {
+        let json = ss.bufferToString( await ns.readFile(packageJsonFile) );
         return JSON.parse(json);
       }
     }
@@ -340,7 +341,7 @@ export class Project {
       pathStyle = importHelperPathStyle;
 
     if (pathStyle == 'shortest') {
-      if (basedOnPaths != '' && (ss.getPathDepth(basedOnPaths) < ss.getPathDepth(basedOnRelative)) )
+      if (basedOnPaths != '' && (ns.getPathDepth(basedOnPaths) < ns.getPathDepth(basedOnRelative)) )
         return basedOnPaths;
       else
         return basedOnRelative;
@@ -363,7 +364,7 @@ export class Project {
     } else {
       // we'll use import helper's non-relative-except style
       let importingBasedOnPaths = this.getModuleSpecifierBasedOnPaths(importingModule.file);
-      if (basedOnPaths != '' && ss.getFirstFolderName(basedOnPaths) != ss.getFirstFolderName(importingBasedOnPaths))
+      if (basedOnPaths != '' && ns.getFirstFolderName(basedOnPaths) != ns.getFirstFolderName(importingBasedOnPaths))
         return basedOnPaths;
       else
         return basedOnRelative;
@@ -450,7 +451,7 @@ export class Project {
    */
   private async getAllFiles(absoluteModuleSpecifier:string):Promise<string[]> {
     // if its pointing to a folder, it means that it is really an "index.*" file in that folder
-    if (await ss.pathExists(absoluteModuleSpecifier))
+    if (await ns.pathExists(absoluteModuleSpecifier))
       absoluteModuleSpecifier = absoluteModuleSpecifier + '/index';
 
     let workPath = ss.extractPath(absoluteModuleSpecifier);
@@ -459,7 +460,7 @@ export class Project {
     let extensionsRegex = new RegExp(ss.escapeRegex(fileName) + '('+ ss.concatWS('|',...regexExtensions) +')$'); // <-- /fileName\.(\.d\.ts|\.ts|\.js|\.tsx|\.jsx)$/ regex filters by extensions
     let fileNames:string[] = [];
     try {
-      fileNames = await ss.getItemsAtPathWithRegex(workPath, extensionsRegex, true /* files only */);
+      fileNames = await ns.getItemsAtPathWithRegex(workPath, extensionsRegex, true /* files only */);
     } catch {
       // do nothing, folder doesn't exist
     }
@@ -516,8 +517,18 @@ export class Project {
    * slowly go through all of the project's modules and catalog the imports and aliases the developer likes to use
    */
   public async loadImports() {
-    for (let [key,sourceModule] of this.sourceModules)
+    const cLoadingMilestoneSeconds = 2;
+    let lastLoadingMilestoneTime = new Date();
+    for (let [key,sourceModule] of this.sourceModules) {
       await this.scanSourceModuleForImports(sourceModule);
+      // call the loading milestone event so that searches can get real time updates
+      if (this.projects.onLoadingMilestone && (new Date()).getTime() - lastLoadingMilestoneTime.getTime() > cLoadingMilestoneSeconds * 1000) {
+        lastLoadingMilestoneTime = new Date();
+        this.projects.onLoadingMilestone();
+      }
+    }
+    if (this.projects.onLoadingMilestone)
+      this.projects.onLoadingMilestone(true);
   }
 
 
@@ -566,7 +577,7 @@ export class Project {
 
 
 export class Projects extends cs.FfSortedMap<string,Project> {
-  public onFinishedLoading:( ()=>void ) | null = null;
+  public onLoadingMilestone:( (finalMilestone?:boolean)=>void ) | null = null;
   private dirtyTimer:NodeJS.Timeout | null = null;
 
   constructor() {
@@ -608,11 +619,11 @@ export class Projects extends cs.FfSortedMap<string,Project> {
     project.config = new ProjectConfig(project);
     await project.config.load(configFile);
 
-    await ss.traverseUp(
+    await ns.traverseUp(
       project.projectPath,
       async (path) => {
         let packageFile = path + 'package.json';
-        if (await ss.fileExists(packageFile)) {
+        if (await ns.fileExists(packageFile)) {
           project.packageJsonFile = packageFile
           return true;
         }
@@ -654,10 +665,10 @@ export class Projects extends cs.FfSortedMap<string,Project> {
     let project:Project;
     let rootWorkspaceFolder = vs.getRootWorkspaceFolder(modulePath);
     let projectConfigFile = '';
-    await ss.traverseUp(
+    await ns.traverseUp(
       modulePath,
       async (path) => {
-        projectConfigFile = await ss.getFirstFile([
+        projectConfigFile = await ns.getFirstFile([
             path+'tsconfig.json',
             path+'jsconfig.json',
             path+'package.json'

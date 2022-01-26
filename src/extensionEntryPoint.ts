@@ -41,9 +41,6 @@ import * as addImportAPI from './importHelperApi';
 import * as ss from './common/systemSupport';
 import * as as from './appSupport';
 import { projects } from './project';
-//import * as es from './common/errorSupport';
-
-//es.initEntryPoint();
 
 // globals for debugging
 (global as any).$vscode = vscode;
@@ -69,24 +66,10 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand('import-helper.addImport', () => {
 			addImportUI.startQuickPick(IHMode.addImport);
 		}),
-		//@todo
-		// vscode.commands.registerCommand('import-helper.addImportByModule', () => {
-		// 	addImportUI.run(IHMode.addImport);
-		// }),
-		// vscode.commands.registerCommand('import-helper.addImportBySymbol', () => {
-		// 	addImportUI.run(IHMode.addImport);
-		// }),
 
 		vscode.commands.registerCommand('import-helper.openModule', () => {
 		 	addImportUI.openModuleKeyPressed();
 		}),
-		// vscode.commands.registerCommand('import-helper.openModuleByModule', () => {
-		//  	addImportUI.openModuleKeyPressed();
-		// }),
-		// vscode.commands.registerCommand('import-helper.openModuleBySymbol', () => {
-		//  	addImportUI.openModuleKeyPressed();
-		// }),
-
 
 		vscode.commands.registerCommand('import-helper.goToImports', () => {
 		 	addImportUI.goUpToImports();
@@ -104,6 +87,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.workspace.onDidChangeTextDocument((event: vscode.TextDocumentChangeEvent) => {
 			docs.documentChanged(event);
 		}),
+
+    vscode.window.onDidChangeTextEditorSelection((event: vscode.TextEditorSelectionChangeEvent) => {
+      docs.selectionChanged(event);
+    }),
 
     vscode.workspace.onDidCloseTextDocument((vscodeTextDocument: vscode.TextDocument) => {
 			docs.closeDocument(vscodeTextDocument);

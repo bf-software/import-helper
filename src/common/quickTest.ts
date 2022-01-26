@@ -56,6 +56,7 @@ import * as fsp from 'fs/promises';
 import { L } from './systemSupport';
 import ch from 'chalk';
 import * as es from './errorSupport';
+import * as ns from './nodeSupport';
 
 const cEsc = '\u001b';
 const cIndentCharacter = '\u00A0'; // <- non breaking space
@@ -360,7 +361,7 @@ class ModuleSection extends BaseSection {
     if (this.causedIsOnly)
       result += this.isOnlyLogLine;
     else
-      result += ch.grey('  (' + ss.getRelativePath(es.settings.entryPointPath, this.file)+ ')');
+      result += ch.grey('  (' + ns.getRelativePath(es.settings.entryPointPath, this.file)+ ')');
     return this.indent(result);
   }
 }
@@ -1168,8 +1169,8 @@ export async function start(options?:QuickTestOptions) {
     globals.outputToConsole = true;
 
   globals.stagingPath = ss.internalizePath(es.settings.entryPointPath)+'staging/';
-  if (await ss.pathExists( es.settings.entryPointPath ))
-    if (! (await ss.pathExists(globals.stagingPath)) )
+  if (await ns.pathExists( es.settings.entryPointPath ))
+    if (! (await ns.pathExists(globals.stagingPath)) )
       await fsp.mkdir(globals.stagingPath, { recursive: true });
 
   if (options?.clearTerminal ?? false)

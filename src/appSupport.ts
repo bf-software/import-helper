@@ -129,6 +129,7 @@ import * as as from './appSupport';
 import * as cs from './common/collectionSupport';
 import * as vscode from 'vscode';
 import { docs } from './document';
+import * as ns from './common/nodeSupport';
 export const cAppName = 'Import Helper';
 
 export const cGoToImportsPos = 'goToImports';
@@ -353,9 +354,9 @@ export async function getNodeModulePaths(importingModuleFile: string) {
   let testPath = ss.extractPath(importingModuleFile);
   while (testPath != '') {
     let testNodeModules = testPath+'node_modules/';
-    if (await ss.pathExists(testNodeModules))
+    if (await ns.pathExists(testNodeModules))
       result.push(testNodeModules);
-    if (ss.isRoot(testPath))
+    if (ns.isRoot(testPath))
       break;
     testPath = ss.extractPath(testPath);
   }

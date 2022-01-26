@@ -4,6 +4,7 @@ import { Module } from './moduleParser';
 import { projects, Project } from './project';
 import * as cs from './common/collectionSupport';
 import * as as from './appSupport';
+import { Token, TK } from './token';
 
 export class Document {
   public module:Module | undefined;
@@ -17,6 +18,12 @@ export class Document {
    * hold on to the same editor instance forever.
    */
   private vscodeTextEditor:vscode.TextEditor | undefined;
+
+  /** when true, the document records the time and line of the last change. Turn off temporarily when making internal changes to the code. */
+  public recordLastChange: boolean = true;
+  public lastChangedTime = new Date();
+  /** the first line is 0 */
+  public lastChangedLine = -1;
 
   constructor(vscodeDocument:vscode.TextDocument ) {
     this.vscodeDocument = vscodeDocument;
@@ -32,6 +39,10 @@ export class Document {
 
   public get isCode():boolean {
     return as.isCodeFile(this.vscodeDocument?.fileName ?? '');
+  }
+
+  public get msecSinceLastChange():number {
+    return (new Date()).getTime() - this.lastChangedTime.getTime();
   }
 
   public get uri():vscode.Uri | undefined {
@@ -63,13 +74,72 @@ export class Document {
     }
 	}
 
+  /** gets the line the cursor is on. The first line is 0.*/
+  public getCursorLine() {
+    return this.vscodeTextEditor!.selection.end.line;
+  }
+
+  public getCh(pos:number):string {
+    let fromPosition = this.posToPosition(pos);
+    let toPosition = this.posToPosition(pos+1);
+    return this.vscodeDocument!.getText( new vscode.Range(fromPosition,toPosition) );
+  }
+
+  /**
+    returns a token suitable for using as the default string in an Add Import module search.
+    Complete (non-partial) symbols will start with double quotes.
+  */
+  public parseSearchSymbol(): string {
+
+    // grab the text of the source line left of the cursor
+    let pos = this.cursorPos;
+    let ch = '';
+    let sourceLine = '';
+    while ( pos >= 0 ) {
+      ch = this.getCh(pos--);
+      if (ch.includes('\n'))
+        break;
+      sourceLine = ch + sourceLine;
+    }
+
+    // parse out the left most symbol, and its following character
+    let token = new Token();
+    token.sourceCode = sourceLine;
+    token.getNext();
+    let lastSymbol = '';
+    let followingCharacter = '';
+    let afterLastSymbolPos = -1;
+    while (token.kind != TK.EndOfFileToken) {
+      if (token.kind == TK.Identifier) {
+        lastSymbol = token.text;
+        afterLastSymbolPos = token.sourcePos;
+        followingCharacter = sourceLine.substr(afterLastSymbolPos,1);
+      }
+      token.getNext();
+    }
+
+    // if there are any non-space characters after the symbol, we'll assume it's complete and start it with a " so the search will look for an exact match
+    let endingChars = sourceLine.substring(afterLastSymbolPos);
+    if (endingChars.match(/\S/))
+      lastSymbol = '"'+lastSymbol;
+
+    // if the character following the last symbol is a [ or (, then we can assume the symbol is an imported symbol, and not a module alias
+    if (followingCharacter == '[' || followingCharacter == '(')
+      lastSymbol = '{'+lastSymbol;
+
+    return lastSymbol;
+
+  }
+
+
   /**
    * tsconfig.json and/or package.json file defines a project.  The document is associated with the project defined
    * by the tsconfig.json and/or package.json file in the document's current folder, or a parent folder. syncProject
    * finds and loads the project based on those files.  If the project has already been loaded, it will simply
    * that one.
    */
-  public async syncProject( onFinishedLoading: () => void ) {
+  public async syncProject( onLoadingMilestone: () => void ) {
+    projects.onLoadingMilestone = onLoadingMilestone;
     let found = projects.byModulePath(this.path);
     if (found) {
       if (found.value.isDirty) {
@@ -80,7 +150,6 @@ export class Document {
       found = await projects.addProject(this.path);
     if (! found)
       throw new Error('syncProject: could not find or load the project.');
-    projects.onFinishedLoading = onFinishedLoading;
     this.project = found.value;
   }
 
@@ -105,17 +174,24 @@ export class Document {
   }
 
   public async insertText(startPos:number, text:string, endPos?:number, allowUndo:boolean = true) {
-    let undoOptions = { undoStopBefore: true, undoStopAfter: true };
-    if (! allowUndo)
-      undoOptions = { undoStopBefore: false, undoStopAfter: false };
-    await this.vscodeTextEditor!.edit(editBuilder => {
-      if (typeof endPos == 'undefined')
-        editBuilder.insert(this.posToPosition(startPos), text);
-      else
-        editBuilder.replace( new vscode.Range( this.posToPosition(startPos), this.posToPosition(endPos) ), text);
-    },
-      undoOptions
-    );
+    try {
+      this.recordLastChange = false;
+
+      let undoOptions = { undoStopBefore: true, undoStopAfter: true };
+      if (! allowUndo)
+        undoOptions = { undoStopBefore: false, undoStopAfter: false };
+      await this.vscodeTextEditor!.edit(editBuilder => {
+        if (typeof endPos == 'undefined')
+          editBuilder.insert(this.posToPosition(startPos), text);
+        else
+          editBuilder.replace( new vscode.Range( this.posToPosition(startPos), this.posToPosition(endPos) ), text);
+      },
+        undoOptions
+      );
+
+    } finally {
+      this.recordLastChange = true;
+    }
   }
 
   public rememberPos(name:string, pos?:number) {
@@ -237,10 +313,20 @@ export class CodeDocuments extends cs.FfMap<vscode.TextDocument, Document> {
     if (!codeDocument)
       return;
 
+    // making a note of the last changed time for Add Import to use
+    if (codeDocument.recordLastChange)
+      codeDocument.lastChangedTime = new Date();
+
     for (let change of event.contentChanges) {
+
+      // making a note of the last changed line for Add Import to use
+      if (codeDocument.recordLastChange)
+        codeDocument.lastChangedLine = codeDocument.vscodeDocument?.positionAt(change.rangeOffset).line ?? -1;
+
+      // check to see if we need to shift our bookmarks
       for (let [name,pos] of codeDocument.bookmarks.entries()) {
         if (change.rangeOffset < pos) {
-          // change took place before the bookmark, so we need to asjust it
+          // change took place before the bookmark, so we need to adjust it
           let newLength = change.text.length;
           let oldLength = change.rangeLength;
 
@@ -252,6 +338,14 @@ export class CodeDocuments extends cs.FfMap<vscode.TextDocument, Document> {
       }
     }
   };
+
+  public selectionChanged(event: vscode.TextEditorSelectionChangeEvent) {
+    let codeDocument = this.get(event.textEditor.document);
+    if (!codeDocument)
+      return;
+    // not doing anything, should remove.
+  }
+
 
 }
 

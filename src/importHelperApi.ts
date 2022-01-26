@@ -49,7 +49,6 @@ export const cTargetLengthSortWeight = 30;
 export enum MessageStyle {error, warning, info};
 
 export class ImportHelperApi {
-
   /**
 	 * these are the node_modules that vscode believes the project has access to. This gets loaded fresh by querying the
 	 * vscode api every time the module search is invoked in case the user ever installs or removes modules via npm.
@@ -94,15 +93,18 @@ export class ImportHelperApi {
 
   }
 
-	public async initStartQuickPick( options:{onLoadingMilestone:()=>void} ) {
+	public async initStartQuickPick( options:{onLoadingMilestone:(finalMilestone?:boolean)=>void} ) {
     if (!docs.active)
 		  return;
+
     await this.prepareEditorAndProject(options);
-    this.parseNearCursorForSymbol();
+
     let tempInsertPos = 0;
     if (docs.active.isSvelte)
       tempInsertPos = docs.active.module!.svelteTempInsertPos;
+
     this.currentFileNodeModules.load(tempInsertPos, options.onLoadingMilestone );
+
 	}
 
 	public async openModule(item: qpi.ProjectModuleQuickPickItem) {
@@ -253,10 +255,23 @@ export class ImportHelperApi {
     await this.exportSymbols.load(tempInsertPos, this.step1QPItem.importStatement.moduleSpecifier, this.step1QPItem.projectModule.universalPathShortenedModuleSpecifier);
   }
 
-	public parseNearCursorForSymbol() {
-		this.startingSymbolSearchText = ''; // todo: look around where the cursor is and see if a symbol should be picked up for the search
-	}
+  /**
+    looks at the cursor position and parses out the nearest text token to the left of it. However, if the user hasn't recently changed any text
+    on that line, this will simply return nothing.
+  */
+  public getSearchToken(): string {
+    const cSearchTokenTimeoutSeconds = 30;
+    if (!docs.active)
+      return '';
+    if (docs.active.msecSinceLastChange > cSearchTokenTimeoutSeconds * 1000)
+      return '';
+    docs.active?.syncEditor();
+    let line = docs.active.getCursorLine();
+    if (line != docs.active.lastChangedLine)
+      return '';
 
+    return docs.active.parseSearchSymbol();
+  }
 
   /**
 	 * this is "step 1" of Import Helper. It populates the {@link ImportHelperApi.moduleSearchQuickPickItems} with entries matching the `searchString` found in the various {@link Project} collections.

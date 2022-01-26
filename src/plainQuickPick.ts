@@ -192,6 +192,8 @@ export class PlainQuickPick<T extends vscode.QuickPickItem> implements vscode.Qu
   public set busy(busy:boolean) { this.quickPick.busy = busy }
   public get ignoreFocusOut(): boolean { return this.quickPick.ignoreFocusOut }
   public set ignoreFocusOut(ignoreFocusOut:boolean) { this.quickPick.ignoreFocusOut = ignoreFocusOut }
+  public get keepScrollPosition(): boolean { return this.quickPick.keepScrollPosition ?? false }
+  public set keepScrollPosition(keepScrollPosition:boolean) { this.quickPick.keepScrollPosition = keepScrollPosition }
   public show() { this.quickPick.show() }
   public hide() { this.quickPick.hide() }
   public dispose() { this.quickPick.dispose() }

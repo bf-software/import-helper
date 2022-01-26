@@ -47,6 +47,8 @@ File extensions are not included in module name searches.  For example, if you a
 Missing node_modules? - If you open Import Helper while the active editor tab in vscode is not a Javascript, Typescript, or Svelte file, the modules list will
 be missing all of the node_modules your project would normally have access to.  This can't be helped because of the way Import Helper gathers the node_modules to show.  Simply reopen Import Helper while editing a code file to avoid this.
 
+When invoking `Add Import`, the most recently typed in symbol/identifier to the left of the cursor will become the default text for the module search.  If there isn't any symbol, the text of the most recent search is used.
+
 ### Go to Imports ┊ `Ctrl+Shift+Up (⇧⌘⭡ on Mac)`
 
 Jumps the editor's cursor to the import section at the top of your code.  If you recently inserted an import statement using `Alt+F11 (⌥F11)`, it will jump to that particular statement.
@@ -140,6 +142,21 @@ show a list of modules that use the selected module
 shows modules that are not referenced by your project code
 
 ## Release Notes
+
+### v0.8.0
+
+new features:
+* when `Add Import ┊ Alt+F11 (⌥F11 on Mac)` is invoked, the nearest symbol/identifier to the left of the cursor will be used as the default
+  search text, provided that it was just recently typed in.
+
+* as IH loads and parses project source code in the background, it will now update the search results periodically during a search.  This is
+  mainly useful during the first search of a coding session. The user may see the reference counts increasing in the search results as the
+  project loads--especially for large projects.
+
+fixed issues:
+* stopped looking at `tsconfig.js --> include` to determine the modules available to Import Helper. IH now simply looks at all sub folders
+  in the project for modules. (Developers may not want to use `tsconfig.js --> include` to include ambient modules at all and only use import
+  statements instead.)
 
 ### v0.7.2
 

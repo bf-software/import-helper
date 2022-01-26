@@ -13,6 +13,7 @@ import * as ss from './systemSupport';
 import ts from 'typescript';
 import strip from 'strip-comments';
 import { docs } from '../document';
+import * as ns from './nodeSupport';
 
 
 export function getWorkspaceFolders():string[] {
@@ -42,9 +43,9 @@ export async function getCompletions(startCode: string, endCode:string, tempInse
   } finally {
     // It would be better if we could simply undo the change, but I see no way to send an undo command to a particular URI,
     // so we have to use revert in order to prevent a non dirty file from becoming dirty as a result of calling this function
-    if (wasDirty)
+    if (wasDirty) {
       docs.active!.insertText(tempInsertPos, '', tempInsertPos+code.length, false);
-    else
+    } else
       await vscode.commands.executeCommand('workbench.action.files.revert',docs.active!.uri);
   }
   return completionList.items;
@@ -186,7 +187,7 @@ export function removeCodicons(stringWithCodicons:string) {
  */
 export async function getUserDataPath():Promise<string> {
   let path = ss.extractPath( process.execPath ) + 'data/user-data/';
-  if (await ss.pathExists(path))
+  if (await ns.pathExists(path))
     return path;
 
   if (process.platform == 'win32') {
@@ -196,15 +197,15 @@ export async function getUserDataPath():Promise<string> {
   } else {
     path = ss.internalizePath(process.env.HOME!) + '.config/Code/';
   }
-  if (await ss.pathExists(path))
+  if (await ns.pathExists(path))
     return path;
   return '';
 }
 
 export async function getKeyBinding(command:string):Promise<string> {
   let keyBindingFile = await getUserDataPath() + 'User/keybindings.json';
-  if (await ss.fileExists(keyBindingFile)) {
-    let keyBindingsJson = strip( ss.bufferToString(await ss.readFile(keyBindingFile)) );
+  if (await ns.fileExists(keyBindingFile)) {
+    let keyBindingsJson = strip( ss.bufferToString(await ns.readFile(keyBindingFile)) );
     let keyBindings:any[] = JSON.parse(keyBindingsJson);
     for (let binding of keyBindings) {
       if ((binding.command ?? '') == command)
@@ -214,8 +215,8 @@ export async function getKeyBinding(command:string):Promise<string> {
 
   // package.json is in the parent of the extensionEntryPointPath
   let packageJsonFile = ss.extractPath(globals.extensionEntryPointPath) + 'package.json';
-  if ( await ss.fileExists(packageJsonFile) ) {
-    let packageObj:any = JSON.parse( ss.bufferToString(await ss.readFile( packageJsonFile )) );
+  if ( await ns.fileExists(packageJsonFile) ) {
+    let packageObj:any = JSON.parse( ss.bufferToString(await ns.readFile( packageJsonFile )) );
     let keyBindings:any[] = packageObj.contributes.keybindings;
     for (let binding of keyBindings) {
       if ((binding.command ?? '') == command)

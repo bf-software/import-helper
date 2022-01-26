@@ -12,6 +12,7 @@ import * as cs from './common/collectionSupport';
 // semver can't be tree-shaked by webpack for some reason,
 // importing this way limits the unnecessary semver modules included by webpack
 import semverSatisfies from 'semver/functions/satisfies';
+import * as ns from './common/nodeSupport';
 
 
 
@@ -123,7 +124,7 @@ export class ProjectModuleResolver {
     this.typescriptVersion = await this.project.getPackageVersion('typescript');
 
     if (isAbsolute) {
-      let relativeModuleSpecifier = ss.getRelativePath(this.project.projectPath, anyModuleSpecifier);
+      let relativeModuleSpecifier = ns.getRelativePath(this.project.projectPath, anyModuleSpecifier);
         await this.mainAlgorithm(this.project.projectPath, relativeModuleSpecifier);
 
     } else if (isRelative) {
@@ -150,7 +151,7 @@ export class ProjectModuleResolver {
     }
 
     for (let [file, projectFileDetails] of this.projectFileMap) {
-      projectFileDetails.relativeDisplayFile = ss.removePrefix(ss.getRelativePath(this.project.projectPath,file), './');
+      projectFileDetails.relativeDisplayFile = ss.removePrefix(ns.getRelativePath(this.project.projectPath,file), './');
     }
 
     return this.projectFileMap;
@@ -167,8 +168,8 @@ export class ProjectModuleResolver {
 
     // if it doesn't have a shortenable code ext, see if it exists, it's probably a .css, .ttf, or other importable, but non-code file, or it might be a .svelte file
     if (! juggler.isShortened) {
-      let possibleNonShortenedFile = ss.resolveFile(absoluteModulePath,relativeModuleSpecifier);
-      if (await ss.fileExists(possibleNonShortenedFile))
+      let possibleNonShortenedFile = ns.resolveFile(absoluteModulePath,relativeModuleSpecifier);
+      if (await ns.fileExists(possibleNonShortenedFile))
         this.projectFileMap.add(possibleNonShortenedFile,'');
     }
 
@@ -176,41 +177,41 @@ export class ProjectModuleResolver {
     let parentPath = ss.extractPath(juggler.shortenedModuleSpecifier);
     let precheckModuleSpecifier = juggler.shortenedModuleSpecifier.substr(parentPath.length);
     while (parentPath != '') {
-      let packageJsonFile = ss.resolvePath(absoluteModulePath,parentPath) + 'package.json';
-      if (await ss.fileExists(packageJsonFile))
+      let packageJsonFile = ns.resolvePath(absoluteModulePath,parentPath) + 'package.json';
+      if (await ns.fileExists(packageJsonFile))
         await this.addPrecheckFilesFromPackageJson(packageJsonFile,precheckModuleSpecifier);
       parentPath = ss.extractPath(parentPath);
     }
 
     // test for all the hidden code entensions
     for (let ext of as.cHiddenCodeExtensionsRank) {
-      let possibleHiddenExt = ss.resolveFile(absoluteModulePath, juggler.shortenedModuleSpecifier + ext);
-      if (await ss.fileExists(possibleHiddenExt))
+      let possibleHiddenExt = ns.resolveFile(absoluteModulePath, juggler.shortenedModuleSpecifier + ext);
+      if (await ns.fileExists(possibleHiddenExt))
         this.projectFileMap.add(possibleHiddenExt, '');
     }
 
     // process the main package.json if it exists
-    let packageJsonFile = ss.resolveFile(absoluteModulePath, juggler.shortenedModuleSpecifier +  '/package.json');
-    if (await ss.fileExists(packageJsonFile))
+    let packageJsonFile = ns.resolveFile(absoluteModulePath, juggler.shortenedModuleSpecifier +  '/package.json');
+    if (await ns.fileExists(packageJsonFile))
       await this.addFilesFromPackageJson(packageJsonFile);
 
     // test for @types if this is a node_modules
     if (ss.extractFolderName(absoluteModulePath) == 'node_modules') {
-      let possibleTypesDefinitionPath = ss.resolveFile(absoluteModulePath+'@types/',juggler.shortenedModuleSpecifier);
+      let possibleTypesDefinitionPath = ns.resolveFile(absoluteModulePath+'@types/',juggler.shortenedModuleSpecifier);
       let possibleTypesDefinitionFile = possibleTypesDefinitionPath + '.d.ts';
-      if (await ss.fileExists(possibleTypesDefinitionFile))
+      if (await ns.fileExists(possibleTypesDefinitionFile))
         this.projectFileMap.add(possibleTypesDefinitionFile, 'definitely typed');
       else {
         possibleTypesDefinitionFile = possibleTypesDefinitionPath +'/index.d.ts';
-        if (await ss.fileExists(possibleTypesDefinitionFile))
+        if (await ns.fileExists(possibleTypesDefinitionFile))
           this.projectFileMap.add(possibleTypesDefinitionFile, 'definitely typed');
       }
     }
 
     // test for index with all hidden code entensions
     for (let ext of as.cHiddenCodeExtensionsRank) {
-      let possibleHiddenIndexExt = ss.resolveFile(absoluteModulePath, juggler.shortenedModuleSpecifier +'/index'+ ext);
-      if (await ss.fileExists(possibleHiddenIndexExt))
+      let possibleHiddenIndexExt = ns.resolveFile(absoluteModulePath, juggler.shortenedModuleSpecifier +'/index'+ ext);
+      if (await ns.fileExists(possibleHiddenIndexExt))
         this.projectFileMap.add(possibleHiddenIndexExt, '');
     }
 
@@ -218,7 +219,7 @@ export class ProjectModuleResolver {
 
 
   private async addPrecheckFilesFromPackageJson(packageJsonFile:string, precheckModuleSpecifier:string) {
-    let json = ss.bufferToString( await ss.readFile(packageJsonFile) );
+    let json = ss.bufferToString( await ns.readFile(packageJsonFile) );
     let packagePath = ss.extractPath(packageJsonFile);
     let packageObject = JSON.parse(json);
     // todo: use exports to see if there are any that match the precheckModuleSpecifier
@@ -230,7 +231,7 @@ export class ProjectModuleResolver {
    * the main entry points into the package.
    */
   private async addFilesFromPackageJson(packageJsonFile:string) {
-    let json = ss.bufferToString( await ss.readFile(packageJsonFile) );
+    let json = ss.bufferToString( await ns.readFile(packageJsonFile) );
     let packagePath = ss.extractPath(packageJsonFile);
     let packageObject = JSON.parse(json);
 
@@ -249,8 +250,8 @@ export class ProjectModuleResolver {
       typesName = 'typings';
     }
     if (relativeTypesFile != '') {
-      let possibleTypesFile = ss.resolveFile(packagePath, relativeTypesFile);
-      if (await ss.fileExists(possibleTypesFile))
+      let possibleTypesFile = ns.resolveFile(packagePath, relativeTypesFile);
+      if (await ns.fileExists(possibleTypesFile))
         typesFile = possibleTypesFile;
     }
 
@@ -270,7 +271,7 @@ export class ProjectModuleResolver {
                 else
                   versionedTypesFile = ss.extractPath(relativeTypesFile) + matcherValue
                 if (versionedTypesFile != '') {
-                  typesFile = ss.resolveFile(packagePath, versionedTypesFile);
+                  typesFile = ns.resolveFile(packagePath, versionedTypesFile);
                   typesName = 'typesVersions';
                 }
               }
@@ -287,19 +288,19 @@ export class ProjectModuleResolver {
     if (typeof packageObject.main == 'string')
       relativeMainFile = packageObject.main;
     if (relativeMainFile != '') {
-      let possibleMainFile = ss.resolveFile(packagePath, relativeMainFile);
-      if (await ss.fileExists(possibleMainFile))
+      let possibleMainFile = ns.resolveFile(packagePath, relativeMainFile);
+      if (await ns.fileExists(possibleMainFile))
         this.projectFileMap.add(possibleMainFile, packageLocationInfo+'main');
     }
 
     // check for exports
     if (typeof packageObject.exports == 'string') {
-      this.projectFileMap.add(ss.resolveFile(packagePath,packageObject.exports), packageLocationInfo+'exports');
+      this.projectFileMap.add(ns.resolveFile(packagePath,packageObject.exports), packageLocationInfo+'exports');
     } else if (packageObject.exports) {
       if (packageObject.exports['.']) {
         let exportsFiles = this.flattenExports(packageObject.exports['.']);
         for (let [relativeFile,locationInfo] of exportsFiles)
-          this.projectFileMap.add(ss.resolveFile(packagePath,relativeFile), packageLocationInfo+'exports: '+locationInfo);
+          this.projectFileMap.add(ns.resolveFile(packagePath,relativeFile), packageLocationInfo+'exports: '+locationInfo);
       }
     }
 

@@ -120,16 +120,16 @@ There are 2 main aspects of module resolution: 1. defining, and 2. mapping.
         can now also be this:
           import * as ss from 'systemSupport';
         for any module in the project, no matter what sub folder it's located in.
-     
+
      How this works:
           our module specifier in the example above is 'systemSupport'. First, typescript woul'd check in the BaseURL for 'systemSupport', but `baseUrl` isn't defined, so it skips that. Then typescript looks at the first "paths" item which is '*'.  '*' means "for any moduleSpecifier", so then it takes the text matched by '*', which by definition is all of the module specifier, which, again is 'systemSupport', and merges it with the first path: './src/common/*' to form './src/common/systemSupport'.  Since './src/common/systemSupport' exists, that's what typescript will use. However if it didn't exist, it would have tried './src/tools/systemSupport' before finally giving up and raising an error.
-     
+
       similarly, this import:
           import * as ss from '/project/importHelper/src/tools/strings';
      can now also be this:
           import * as ss from 'wow/strings';
         for any module in the project, no matter what sub folder it's located in.
-     
+
      How this works:
           our module specifier in the example above is 'wow/strings', so first, typescript checks in the BaseURL for 'wow/strings', which it doesn't find.  Then typescript looks at the first "paths" item which is '*'.  '*' means "for any moduleSpecifier", so then it takes the text matched by '*', which by definition is all of the module specifier, which, again is 'wow/strings', and merges it with the first path: './src/common/*' to form './src/common/wow/strings'.  Since './src/common/wow/strings' does NOT exist, typescript tries the next path in the '*' item to no avail.  Then typescript notices that 'wow/strings' is matched by 'wow/*', so it takes the part of 'wow/strings' that the * matched, which is 'strings' and merges it with the first path: './src/tools/*' forming './src/tools/strings'. Since './src/tools/strings' exists, that is used.
      ```
@@ -176,15 +176,11 @@ Modules offered by the node_modules folder are pulled in by leveraging vscode's 
 
 
 
-## To Do
+# To Do
 
-### (easy items)
+## (easy items)
 
-### smart initial search text
-
-IH should keep track of what the user typed recently.  If the user invokes IH's Add Import command right after typing some text, that text should be the default. for example, if the user typed `let x = new Uri`, the default search text should be `Uri`.  If they typed `let x = new Uri()`, the search should be `"Uri"` (with double quotes), that way the results will be narrower.  The key is: only use the last typed string if it was typed no more than 30 seconds ago--and the cursor is still in the location that the typing occurred.  Then parse out the symbol token closest to the text.  Determine if the symbol was definitely a complete symbol (by looking at punctuation at the end of the symbol, and stripping it out in the process). Finally, use the text as the default search text, putting it in double quotes if it was a complete symbol.
-
-### awaiting proposed `QuickPick `feature
+### implement item separator
 
 once the proposed quickpick item separator feature is released (https://github.com/microsoft/vscode/issues/74967), use it instead of the underscore string in the quickpick item description.
 

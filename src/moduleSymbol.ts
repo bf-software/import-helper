@@ -44,7 +44,7 @@ export class ModuleSymbols extends cs.FfArray<ModuleSymbol> {
 				moduleSymbol.name = (typeof comp.label == 'string' ? comp.label : comp.label.label);
 				if (typeof comp.kind =='undefined')
 					moduleSymbol.type = '?';
-				else if (comp.kind == vscode.CompletionItemKind.Text || comp.kind == vscode.CompletionItemKind.Snippet)
+				else if (comp.kind == vscode.CompletionItemKind.Text || comp.kind == vscode.CompletionItemKind.Snippet || comp.kind == vscode.CompletionItemKind.Keyword)
 					continue;
 				else
 					moduleSymbol.type = vscode.CompletionItemKind[comp.kind].toLowerCase();

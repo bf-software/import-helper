@@ -76,7 +76,6 @@ import * as ss from './common/systemSupport';
 import { docs } from './document';
 import { Project } from './project';
 import * as vs from './common/vscodeSupport';
-import { cHiddenCodeExtensionsRank, getExtRankByExt, cCodeExtensions } from './appSupport';
 import * as cs from './common/collectionSupport';
 import * as as from './appSupport';
 import { ImportKind } from './importStatementParser';
@@ -149,7 +148,7 @@ export abstract class ProjectModule {
     this._isCode = moduleSpecifierJuggler.isCode;
     this._codeModuleExt = moduleSpecifierJuggler.ext;
     this._codeModuleHasIndex = moduleSpecifierJuggler.hasIndex;
-    this._symbolQuality = cHiddenCodeExtensionsRank.length - getExtRankByExt(this.codeModuleExt);
+    this._symbolQuality = as.cHiddenCodeExtensionsRank.length - as.getExtRankByExt(this.codeModuleExt);
   }
 
   /**
@@ -316,26 +315,31 @@ export class SourceModules extends cs.FfMap<string,SourceModule> {
     this.clear();
     this.initPaths();
 
-    if (this.project.config) {
-      // if we have a config file, the *.ts files will already gathered for us by the typescript api
-      for (let file of this.project.config.rawFiles) {
-        file = ss.internalizeFile( file );
-        if (!this.isExcludedByRootPaths( file ) && !this.isExcludedByPaths( file ) )
-          this.addByModuleFile( file );
-      }
-      // we no longer need to keep the list of raw files around.
-      this.project.config.clearRawFiles();
+    // remove: all of this was simply to take advantage of the fact that typescript already scans the project to
+    // gather the ambient modules based on tsconfig's include and exclude entries.  However, for projects that
+    // don't use ambient modules, this was ignoring all of the modules the project really has access to. So instead
+    // IH will scan for modules on its own.
 
-    } else {
+    // if (this.project.config) {
+    //   // if we have a config file, the *.ts files will already gathered for us by the typescript api
+    //   for (let file of this.project.config.rawFiles) {
+    //     file = ss.internalizeFile( file );
+    //     if (!this.isExcludedByRootPaths( file ) && !this.isExcludedByPaths( file ) )
+    //       this.addByModuleFile( file );
+    //   }
+    //   // we no longer need to keep the list of raw files around.
+    //   this.project.config.clearRawFiles();
+
+    // } else {
       // we'll have to get our own files
-      let foundURIs = await vscode.workspace.findFiles('**/'+vs.getWorkspaceRelativePath(this.project.projectPath)+'**/*{'+ss.commas(cCodeExtensions)+'}', '**/{node_modules'+ss.prefix(',',ss.commas(this.excludePaths))+'}/**');
-      for (let uri of foundURIs)
-        if (! this.isExcludedByRootPaths( ss.internalizeFile(uri.fsPath) ) )
-          this.addByModuleFile( ss.internalizeFile(uri.fsPath ) );
-    }
+      // let foundURIs = await vscode.workspace.findFiles('**/'+vs.getWorkspaceRelativePath(this.project.projectPath)+'**/*{'+ss.commas(cCodeExtensions)+'}', '**/{node_modules'+ss.prefix(',',ss.commas(this.excludePaths))+'}/**');
+      // for (let uri of foundURIs)
+      //   if (! this.isExcludedByRootPaths( ss.internalizeFile(uri.fsPath) ) )
+      //     this.addByModuleFile( ss.internalizeFile(uri.fsPath ) );
+    // }
 
-    let additionalExtensionsString = ss.commas(...as.additionalExtensions,...as.cSvelteExtensions);
-    let foundURIs = await vscode.workspace.findFiles('**/'+vs.getWorkspaceRelativePath(this.project.projectPath)+'**/*{'+additionalExtensionsString+'}', '**/{node_modules'+ss.prefix(',',ss.commas(this.excludePaths))+'}/**');
+    let allExtensions = ss.commas(...as.cCodeExtensions,...as.additionalExtensions,...as.cSvelteExtensions);
+    let foundURIs = await vscode.workspace.findFiles('**/'+vs.getWorkspaceRelativePath(this.project.projectPath)+'**/*{'+allExtensions+'}', '**/{node_modules'+ss.prefix(',',ss.commas(this.excludePaths))+'}/**');
     for (let uri of foundURIs)
       if (! this.isExcludedByRootPaths( ss.internalizeFile(uri.fsPath) ) )
         this.addByModuleFile( ss.internalizeFile(uri.fsPath ) );
@@ -389,7 +393,7 @@ export class NodeModules extends cs.FfMap<string,NodeModule> {
   /**
    * used when opening Import Helper to load a list of modules on the fly
    */
-  public async load( tempInsertPos:number, onFinishedLoading:()=>void ): Promise<void> {
+  public async load( tempInsertPos:number, onLoadingMilestone:(finalMilestone?:boolean)=>void ): Promise<void> {
     if (this.isLoading)
       return;
     this.isLoading = true;
@@ -413,7 +417,7 @@ export class NodeModules extends cs.FfMap<string,NodeModule> {
 
     } finally {
       this.isLoading = false;
-      onFinishedLoading();
+      onLoadingMilestone(true);
     }
 
 	}

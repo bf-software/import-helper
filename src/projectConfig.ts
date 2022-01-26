@@ -4,6 +4,7 @@ import * as ts from 'typescript';
 import * as path from 'path';
 import { Project, projects } from './project';
 import * as cs from './common/collectionSupport';
+import * as ns from './common/nodeSupport';
 
 export class ProjectConfig {
 
@@ -122,18 +123,18 @@ export class ProjectConfig {
   /**
    * `include` setting in tsconfig/jsconfig.  If specified, only files here (and in the `files` setting, which I'm ignoring on purpose) are considered to be in the project
    */
-  public includes: string[] = [];
+//  public includes: string[] = [];
 
   /**
    * `exclude` setting in tsconfig/jsconfig. Removes folders and files from the project.
    */
-  public excludes: string[] = [];
+//  public excludes: string[] = [];
 
   /**
    *  list of files belonging to the project. This is automatically built for us by the typescript api and is in local OS format
    *  (i.e. with backslash path separators on Windows)
    */
-  public rawFiles: string[] = [];
+//  public rawFiles: string[] = [];
 
   /**
    * list of folders the typescript api suggests to watch for changes
@@ -170,7 +171,7 @@ export class ProjectConfig {
     (global as any).$projects = projects;
 
     this.baseUrl = parsedConfig.options.baseUrl ?? '';
-    this.baseUrlExists = this.baseUrl != '' && ss.fileExistsSync(this.baseUrl);
+    this.baseUrlExists = this.baseUrl != '' && ns.fileExistsSync(this.baseUrl);
 
     let matcherBaseURL = ss.ifBlank(this.baseUrl, this.project.projectPath);
     this.paths.clear();
@@ -184,16 +185,16 @@ export class ProjectConfig {
 
     this.rootDirs.clear();
     this.rootDirs.push(...this.internalizePaths(parsedConfig.options.rootDirs ?? []));
-    this.includes = (parsedConfig as any).configFileSpecs?.includeSpecs as string[] ?? [];
-    this.excludes = (parsedConfig as any).configFileSpecs?.excludeSpecs as string[] ?? [];
-    this.rawFiles = parsedConfig.fileNames;
+    //this.includes = (parsedConfig as any).configFileSpecs?.includeSpecs as string[] ?? [];
+    //this.excludes = (parsedConfig as any).configFileSpecs?.excludeSpecs as string[] ?? [];
+    //this.rawFiles = parsedConfig.fileNames;
     this.wildcardDirectories = parsedConfig.wildcardDirectories ?? {};
 
   }
 
-  public clearRawFiles() {
-    this.rawFiles = [];
-  }
+  // public clearRawFiles() {
+  //   this.rawFiles = [];
+  // }
 
   private internalizePaths(paths: string[]): string[] {
     return paths.map(path => ss.internalizePath(path));

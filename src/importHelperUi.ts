@@ -69,7 +69,7 @@ export class ImportHelperUi {
   }
 
   /**
-   * main entrypoint for the three main commands: addImport, openModule, and showReferences
+   * main entry point for the three main commands: addImport, openModule, and showReferences
    */
   public async startQuickPick(mode: IHMode) {
     if (!docs.active) {
@@ -80,8 +80,12 @@ export class ImportHelperUi {
 
     this.api.mode = mode;
     this.api.importingModuleFilePath = ss.extractPath(docs.active.file ?? '');
-    await this.api.initStartQuickPick({ onLoadingMilestone:() => {
-      this.changedModuleValue();
+    await this.api.initStartQuickPick({ onLoadingMilestone:(finalMilestone:boolean=false) => {
+      if (! this.moduleQuickPick)
+        return;
+      if (this.moduleQuickPick!.value.length <= 1 && finalMilestone == false)  // <-- if *, or just 1 character is used, do not keep refreshing
+        return;
+      this.changedModuleValue(false,true);
     } });
 
     // at this point, the docs.actve.project is available to use because of the prior call to initRun()
@@ -101,7 +105,7 @@ export class ImportHelperUi {
 
     let lastStep = 1;
 
-    let selectedItem = await this.searchForModules(mode);
+    let selectedItem = await this.searchForModule(mode);
     this.moduleQuickPick?.hide();
     if (! selectedItem)
       return;
@@ -116,7 +120,7 @@ export class ImportHelperUi {
       // if the user picks an non import statement in step 1, move to step 2
       if (! (this.api.step1QPItem instanceof qpi.SourceModuleImportQuickPickItem || this.api.step1QPItem instanceof qpi.SourceSymbolImportQuickPickItem)) {
         lastStep = 2;
-        this.api.step2QPItem = await this.searchSymbol();
+        this.api.step2QPItem = await this.searchForSymbol();
         this.symbolQuickPick?.hide();
         if (! this.api.step2QPItem)
           return;
@@ -126,7 +130,7 @@ export class ImportHelperUi {
     } else if (mode == IHMode.openModule) {
       this.api.openModule(this.api.step1QPItem);
 
-    } else /*showReferences*/ {
+    } else { // showReferences
       this.api.showReferences(this.api.step1QPItem);
 
     }
@@ -154,7 +158,7 @@ export class ImportHelperUi {
      return (this.moduleQuickPick || this.symbolQuickPick);
    }
 
-  public async searchForModules(mode:IHMode):Promise<qpi.ProjectModuleQuickPickItem | null> {
+  public async searchForModule(mode:IHMode):Promise<qpi.ProjectModuleQuickPickItem | null> {
     return new Promise<qpi.ProjectModuleQuickPickItem | null>( resolve => {
 
       this.moduleQuickPick = new PlainQuickPick<qpi.ProjectModuleQuickPickItem>();
@@ -181,19 +185,22 @@ export class ImportHelperUi {
       if (mode == IHMode.addImport) {
         this.moduleQuickPick.totalSteps = 2;
         this.moduleQuickPick.title = 'Add Import - ' + cAppName;
-        this.moduleQuickPick.placeholder = 'Search for modules to import. '+searchInfo;
+        this.moduleQuickPick.placeholder = 'Search for module to import. '+searchInfo;
       } else if (mode == IHMode.openModule) {
         this.moduleQuickPick.totalSteps = 1;
         this.moduleQuickPick.title = 'Open Module - ' + cAppName;
-        this.moduleQuickPick.placeholder = 'Search for modules to open. '+searchInfo;
+        this.moduleQuickPick.placeholder = 'Search for module to open. '+searchInfo;
       } else if (mode == IHMode.showReferences) {
         this.moduleQuickPick.totalSteps = 1;
         this.moduleQuickPick.title = 'Show Module References - ' + cAppName;
-        this.moduleQuickPick.placeholder = 'Search for modules to show references. '+searchInfo;
+        this.moduleQuickPick.placeholder = 'Search for module to show references. '+searchInfo;
       }
 
       this.isFreshModuleSearch = true;
-      this.moduleQuickPick.value = this.lastModuleSearchValue;
+      if (mode == IHMode.addImport) {
+        this.moduleQuickPick.value = ss.ifBlank(this.api.getSearchToken(), this.lastModuleSearchValue);
+      } else
+        this.moduleQuickPick.value = this.lastModuleSearchValue;
 
       this.moduleQuickPick.onDidChangeValue(value => {
         this.changedModuleValue();
@@ -203,7 +210,14 @@ export class ImportHelperUi {
 
       this.changedModuleValue();
 
-      this.moduleQuickPick.show();
+      /* An odd side effect occurs when a quickpick is shown at the same time an intellisense popup is on the screen AND
+         a change to the underlying module code is made. (IH adds a dummy import to the top of the module's code in order to
+         trigger vscode's "get completions" command.)  As a result, the quickpick gets prematurely dismissed when intellisense
+         popups are present.
+      */
+      vscode.commands.executeCommand('hideSuggestWidget').then(()=>{ // <-- hides any open intellisense popups before showing the quickpick
+        this.moduleQuickPick?.show();
+      });
 
     });
 
@@ -272,22 +286,26 @@ export class ImportHelperUi {
     }
 	}
 
-  public changedModuleValue() {
+  public changedModuleValue(selectTopItem:boolean = true, keepScrollPosition:boolean = false) {
     if (! this.moduleQuickPick)
       return;
+    this.moduleQuickPick.keepScrollPosition = keepScrollPosition;
+    let lastItemIndex = this.moduleQuickPick!.items.indexOf(this.moduleQuickPick!.activeItems[0]);
     this.api.searchForModules(this.moduleQuickPick!.value);
     this.moduleQuickPick!.items = this.api.moduleSearchQuickPickItems;
 
-    // position the active item to the one that was selected last time
+    // position the active item at the one that was selected during a prior search session
     if (this.isFreshModuleSearch && !this.api.moduleSearchQuickPickItems.isLoading) {
       if (this.lastModuleSearchItemIndex < this.moduleQuickPick!.items.length)
         this.moduleQuickPick!.activeItems = [this.moduleQuickPick!.items[this.lastModuleSearchItemIndex]];
       this.isFreshModuleSearch = false;
+    } else if (!selectTopItem) {
+      this.moduleQuickPick!.activeItems = [this.moduleQuickPick!.items[lastItemIndex]];
     }
   }
 
 
-  public async searchSymbol():Promise<qpi.ProjectModuleQuickPickItem | undefined> {
+  public async searchForSymbol():Promise<qpi.ProjectModuleQuickPickItem | undefined> {
     return new Promise<qpi.ProjectModuleQuickPickItem | undefined>( resolve => {
 
       // note: we can't reuse the QuickPick from findModule() because if we don't create a fresh one, the edit box won't pre-select the text (we want that so the user can start typing something new if they want)
