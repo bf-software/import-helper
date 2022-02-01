@@ -1778,3 +1778,14 @@ export function getClassEnding(e:Element,startsWith:string):string|undefined {
   }
   return undefined;
 }
+
+/**
+  keeps the `value` between the `min` and `max` values.
+*/
+export function minMax(value: number, min: number, max: number): number {
+  if (value < min)
+    return min;
+  else if (value > max)
+    return max;
+  return value;
+}

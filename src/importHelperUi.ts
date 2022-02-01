@@ -3,7 +3,7 @@ import { ImportHelperApi, MessageStyle } from './importHelperApi';
 import * as ss from './common/systemSupport';
 import { cAppName } from './appSupport';
 import { PlainQuickPick, PlainQuickPickButtons } from './plainQuickPick';
-import { docs } from './document';
+import { docs, EditorSearchSymbol } from './document';
 import { globals } from './common/vscodeSupport';
 import * as vs from './common/vscodeSupport';
 import * as qpi from './quickPickItems';
@@ -29,6 +29,7 @@ export class ImportHelperUi {
   private lastModuleSearchValue: string = '';
   private lastModuleSearchItemIndex: number = 0;
   private isFreshModuleSearch: boolean = false;
+  private editorSearchSymbol: EditorSearchSymbol | undefined;
 
   constructor() {
 
@@ -198,7 +199,17 @@ export class ImportHelperUi {
 
       this.isFreshModuleSearch = true;
       if (mode == IHMode.addImport) {
-        this.moduleQuickPick.value = ss.ifBlank(this.api.getSearchToken(), this.lastModuleSearchValue);
+        this.editorSearchSymbol = this.api.getEditorSearchSymbol();
+        let searchText = this.lastModuleSearchValue;
+        if (this.editorSearchSymbol) {
+          searchText = this.editorSearchSymbol.text;
+          if (this.editorSearchSymbol.isComplete)
+            searchText = '"'+searchText;
+          if (this.editorSearchSymbol.isSymbol)
+            searchText = '{'+searchText
+          docs.active!.rememberPos('editorSearchSymbol',this.editorSearchSymbol.startPos);
+        }
+        this.moduleQuickPick.value = searchText;
       } else
         this.moduleQuickPick.value = this.lastModuleSearchValue;
 
@@ -354,7 +365,7 @@ export class ImportHelperUi {
   }
 
   public async addImportStatement(lastStep:number) {
-    this.api.addImportStatement(lastStep);
+    this.api.addImportStatement(lastStep, this.editorSearchSymbol);
     if (this.api.addStatementWarning)
       vscode.window.showWarningMessage(this.api.addStatementWarning);
   }

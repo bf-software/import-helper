@@ -47,7 +47,7 @@ File extensions are not included in module name searches.  For example, if you a
 Missing node_modules? - If you open Import Helper while the active editor tab in vscode is not a Javascript, Typescript, or Svelte file, the modules list will
 be missing all of the node_modules your project would normally have access to.  This can't be helped because of the way Import Helper gathers the node_modules to show.  Simply reopen Import Helper while editing a code file to avoid this.
 
-When invoking `Add Import`, the most recently typed in symbol/identifier to the left of the cursor will become the default text for the module search.  If there isn't any symbol, the text of the most recent search is used.
+When invoking `Add Import`, the most recently typed in symbol/identifier to the left of the cursor will become the default text for the module search.  If there isn't any symbol, the text of the most recent search is used.  If a partial symbol, symbol alias, module, or modual alias was found to the left of the cursor, selecting a matching symbol, symbol alias, module, or modual alias will complete the text in the editor.
 
 ### Go to Imports ┊ `Ctrl+Shift+Up (⇧⌘⭡ on Mac)`
 
@@ -103,7 +103,7 @@ Shows all symbols already imported somewhere in your project (only available in 
 
 ### Open Module ┊ `Alt+O (⌥O on Mac)`
 
-Opens the highlighted module in the editor. This is often a more direct route to the module's code than using vscode's `GoTo File... (Ctrl+P | ⌘P)` command, which can include many other files besides source modules.  Another benefit of opening modules this way is that you can find modules by their aliases or by the symbols your project actually uses.  Activating this command in Step 1 of `Add Import (Alt+F11 | ⌥I)` will open the selected module instead of importing it. This command can also be started directly from the editor, in which case it will open Import Helper in "Open Module" mode.  Then selecting a module using the enter key will immediately open it instead of importing it.
+Opens the highlighted module in the editor. This is often a more direct route to the module's code than using vscode's `GoTo File... (Ctrl+P | ⌘P)` command, which can include many other files besides source modules.  Another benefit of opening modules this way is that you can find modules by their aliases or by the symbols your project uses.  Activating this command in Step 1 of `Add Import (Alt+F11 | ⌥I)` will open the selected module instead of importing it. This command can also be started directly from the editor, in which case it will open Import Helper in "Open Module" mode.  Then selecting a module using the enter key will immediately open it instead of importing it.
 
 If a module is represented by multiple code files, Import Helper will ask to choose one of the files to open. For example, a module may have both a .d.ts and a .js file available.
 
@@ -147,7 +147,8 @@ shows modules that are not referenced by your project code
 
 new features:
 * when `Add Import ┊ Alt+F11 (⌥F11 on Mac)` is invoked, the nearest symbol/identifier to the left of the cursor will be used as the default
-  search text, provided that it was just recently typed in.
+  search text, provided that it was just recently typed in.  If the text is a partial symbol or module name, it will be completed in the
+  editor upon selecting a symbol or module name that matches that text.
 
 * as IH loads and parses project source code in the background, it will now update the search results periodically during a search.  This is
   mainly useful during the first search of a coding session. The user may see the reference counts increasing in the search results as the
@@ -155,8 +156,8 @@ new features:
 
 fixed issues:
 * stopped looking at `tsconfig.js --> include` to determine the modules available to Import Helper. IH now simply looks at all sub folders
-  in the project for modules. (Developers may not want to use `tsconfig.js --> include` to include ambient modules at all and only use import
-  statements instead.)
+  in the project for modules. (Developers may not want to use `tsconfig.js --> include` to include ambient modules at all but rather only
+  import by using use import statements in modules.)
 
 ### v0.7.2
 

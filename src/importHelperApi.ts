@@ -42,11 +42,13 @@ import { ModuleSymbol, ModuleSymbols } from './moduleSymbol';
 import { ModuleSearchTerms, SymbolSearchTerms, MTT } from './searchTerms';
 import { PlainQuickPickItem } from './plainQuickPick';
 import { ProjectModuleResolver, ProjectFileMap } from './projectModuleResolver';
+import { EditorSearchSymbol } from './document';
 
 export const cReferenceCountSortWeight = 70;
 export const cTargetLengthSortWeight = 30;
 
 export enum MessageStyle {error, warning, info};
+
 
 export class ImportHelperApi {
   /**
@@ -259,18 +261,17 @@ export class ImportHelperApi {
     looks at the cursor position and parses out the nearest text token to the left of it. However, if the user hasn't recently changed any text
     on that line, this will simply return nothing.
   */
-  public getSearchToken(): string {
+  public getEditorSearchSymbol(): EditorSearchSymbol | undefined {
     const cSearchTokenTimeoutSeconds = 30;
     if (!docs.active)
-      return '';
+      return;
     if (docs.active.msecSinceLastChange > cSearchTokenTimeoutSeconds * 1000)
-      return '';
+      return;
     docs.active?.syncEditor();
     let line = docs.active.getCursorLine();
     if (line != docs.active.lastChangedLine)
-      return '';
-
-    return docs.active.parseSearchSymbol();
+      return;
+    return docs.active.parseEditorSearchSymbol();
   }
 
   /**
@@ -360,7 +361,7 @@ export class ImportHelperApi {
   }
 
 
-  public async addImportStatement(fromStep:number) {
+  public async addImportStatement(fromStep:number, editorSearchSymbol?:EditorSearchSymbol) {
 		this.addStatementWarning = '';
 
     if (!docs.active)
@@ -405,6 +406,30 @@ export class ImportHelperApi {
     if (selectedQPI.importStatement.hasSymbols && selectedQPI.importStatement.symbols.items.length == 0) {
       await this.goUpToImports();
 		}
+
+    // check to see if there was a search symbol from the left of the editor's cursor used as a default text. If so
+    // we may be able to complete the text in the editor.
+    if (editorSearchSymbol && !editorSearchSymbol.isComplete) {
+      let pos = docs.active.getPos('editorSearchSymbol') ?? -1;
+      if (pos > -1) {
+        let mainIdentifier = selectedQPI.importStatement.mainIdentifier;
+        if (mainIdentifier && mainIdentifier.startsWith(editorSearchSymbol.text)) {
+
+          let insertStartPos = pos;
+          let insertEndPos = pos + editorSearchSymbol.text.length;
+
+          // sanity check
+          let cursorPosLine = docs.active.cursorPosition.line;
+          let insertStartPosLine = docs.active.posToPosition(insertStartPos).line;
+          let insertEndPosLine = docs.active.posToPosition(insertEndPos).line;
+          if (insertStartPosLine != cursorPosLine || insertEndPosLine != cursorPosLine)
+            throw Error(`import-helper.addImportStatement(): sanity check: was about to replace text on a line different from the cursor's line`);
+
+          await docs.active.insertText(insertStartPos,mainIdentifier,insertEndPos);
+        }
+      }
+
+    }
 
 	}
 

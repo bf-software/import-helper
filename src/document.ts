@@ -6,6 +6,16 @@ import * as cs from './common/collectionSupport';
 import * as as from './appSupport';
 import { Token, TK } from './token';
 
+
+/** represents the full or partial symbol to the left of the cursor when import helper is invoked. */
+export class EditorSearchSymbol {
+  public text:string = '';
+  public isComplete:boolean = false;
+  public isSymbol:boolean = false;
+  public startPos:number|undefined;
+}
+
+
 export class Document {
   public module:Module | undefined;
   public project:Project | null = null;
@@ -89,18 +99,21 @@ export class Document {
     returns a token suitable for using as the default string in an Add Import module search.
     Complete (non-partial) symbols will start with double quotes.
   */
-  public parseSearchSymbol(): string {
+  public parseEditorSearchSymbol(): EditorSearchSymbol {
 
     // grab the text of the source line left of the cursor
-    let pos = this.cursorPos - 1;
+    let linePos = this.cursorPos - 1;
     let ch = '';
     let sourceLine = '';
-    while ( pos >= 0 ) {
-      ch = this.getCh(pos--);
-      if (ch.includes('\n'))
+    while ( true ) {
+      ch = (linePos >= 0 ? this.getCh(linePos) : '\n')
+      if (ch.includes('\n')) // <-- on Windows the new line "character" is returned from getCh as '\r\n' (2 characters long -- even if the document is set to "LF"!)
         break;
       sourceLine = ch + sourceLine;
+      linePos--;
     }
+
+    linePos++; // <-- places the position at the first character on the line
 
     // parse out the left most symbol, and its following character
     let token = new Token();
@@ -118,16 +131,20 @@ export class Document {
       token.getNext();
     }
 
+    let editorSearchSymbol = new EditorSearchSymbol();
+    editorSearchSymbol.text = lastSymbol;
+    editorSearchSymbol.startPos = linePos + (afterLastSymbolPos - lastSymbol.length);
+
     // if there are any non-space characters after the symbol, we'll assume it's complete and start it with a " so the search will look for an exact match
     let endingChars = sourceLine.substring(afterLastSymbolPos);
     if (endingChars.match(/\S/))
-      lastSymbol = '"'+lastSymbol;
+      editorSearchSymbol.isComplete = true;
 
     // if the character following the last symbol is a [ or (, then we can assume the symbol is an imported symbol, and not a module alias
     if (followingCharacter == '[' || followingCharacter == '(')
-      lastSymbol = '{'+lastSymbol;
+      editorSearchSymbol.isSymbol = true;
 
-    return lastSymbol;
+    return editorSearchSymbol;
 
   }
 
@@ -206,6 +223,10 @@ export class Document {
 
   public hasPos(name:string) {
     return this.bookmarks.has(name);
+  }
+
+  public getPos(name:string) {
+    return this.bookmarks.get(name);
   }
 
   public goTo(posNumOrName:number|string):void {

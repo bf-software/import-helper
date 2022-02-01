@@ -244,6 +244,25 @@ export class ImportStatement extends Scanable {
 	  return ss.extractFileName(this.universalPathShortenedModuleSpecifier);
 	}
 
+  /**
+    returns the identifier that would be used in code. examples:
+
+    | import statement                 | mainIdentifier |
+    |:---------------------------------|---------------:|
+    |`import * as fs from 'fs';`       | `fs`           |
+    |`import { read } from 'fs';`      | `read`         |
+    |`import { read as rd } from 'fs';`| `rd`           |
+    |`import fs from 'fs';`            | `fs`           |
+    |`import 'fs';`                    | `<none>`       |
+
+  */
+  public get mainIdentifier(): string {
+    if (this.symbols.items.length)
+      return ss.ifBlank(this.symbols.items[0].alias, this.symbols.items[0].name);
+    else if (this.hasDefaultAlias)
+      return this.defaultAlias
+    return this.alias;
+  }
 
   /** stores the actual extension of the module file if it's a code module (`.ts, .tsx, .js, .jsx, etc.`) */
   public get codeModuleExt(): string {

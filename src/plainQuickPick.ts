@@ -135,6 +135,7 @@ export class PlainQuickPick<T extends vscode.QuickPickItem> implements vscode.Qu
   public cHighlightBlockerChar:string = '>';
   private quickPick = vscode.window.createQuickPick<T>();
 
+
   constructor() {
     this.matchOnDescription = false;
     this.sortByLabel = false;
