@@ -67,6 +67,10 @@ export class Document {
     this.vscodeTextEditor = vscode.window.activeTextEditor;
   }
 
+  public clearSelection() {
+    this.vscodeTextEditor!.selection = new vscode.Selection(this.vscodeTextEditor!.selection.end,this.vscodeTextEditor!.selection.end);
+  }
+
   /**
    * parses the current document if it a code module
    */
@@ -200,8 +204,9 @@ export class Document {
       await this.vscodeTextEditor!.edit(editBuilder => {
         if (typeof endPos == 'undefined')
           editBuilder.insert(this.posToPosition(startPos), text);
-        else
+        else {
           editBuilder.replace( new vscode.Range( this.posToPosition(startPos), this.posToPosition(endPos) ), text);
+        }
       },
         undoOptions
       );

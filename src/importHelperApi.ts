@@ -426,6 +426,8 @@ export class ImportHelperApi {
             throw Error(`import-helper.addImportStatement(): sanity check: was about to replace text on a line different from the cursor's line`);
 
           await docs.active.insertText(insertStartPos,mainIdentifier,insertEndPos);
+          docs.active.clearSelection(); // <-- insert text causes a selection to be created.
+
         }
       }
 
