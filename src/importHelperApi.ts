@@ -269,7 +269,8 @@ export class ImportHelperApi {
       return;
     docs.active?.syncEditor();
     let line = docs.active.getCursorLine();
-    if (line != docs.active.lastChangedLine)
+	let lastChangedLine = docs.active.lastChangedLine; 
+    if (line != lastChangedLine)
       return;
     return docs.active.parseEditorSearchSymbol();
   }

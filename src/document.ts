@@ -334,10 +334,19 @@ export class CodeDocuments extends cs.FfMap<vscode.TextDocument, Document> {
     return codeDocument;
   }
 
+  /**
+   * handle when a document changes in vscode. The changing document may not be the active document
+   * (for example, vscode can change multiple files in your project when you rename symbols.)
+   */
   public documentChanged(event: vscode.TextDocumentChangeEvent) {
     let codeDocument = this.get(event.document);
-    if (!codeDocument)
-      return;
+    if (!codeDocument) {
+      // if we haven't established a `Document` object for the vscode document, see if the active document is the document being changed.  
+      codeDocument = docs.active;
+      if (!codeDocument || codeDocument.vscodeDocument != event.document)
+        // if we haven't got a Document yet, and it's not for the active document, we don't need to do anything.
+        return;
+    }  
 
     // making a note of the last changed time for Add Import to use
     if (codeDocument.recordLastChange)
