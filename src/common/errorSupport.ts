@@ -13,12 +13,13 @@
  * at collectionSupport.ts:5:14
  * at main.ts:12:3
  * ```
-
-for all exceptions, this will convert node's test based error stack to a js object that can be easilly read later if needed.
-
-for unhandled exceptions, this will convert the stack's files to their mapped file if applicable, then it will output the stack
-to the console in a friendly manor.
-
+ *
+ * for all exceptions, this will convert node's test based error stack to a js object that can be easilly read later if needed.
+ *
+ * for unhandled exceptions, this will convert the stack's files to their mapped file if applicable, then it will output the stack
+ * to the console in a friendly manor.
+ *
+ * call {@link initEntryPoint()} from the first line of the module you consider to be the entrypoint of your application.
  */
 
 import * as cs from './collectionSupport';
@@ -68,19 +69,52 @@ export class ErrorSettings {
   public projectRootPath = '';
 }
 
+export interface InitEntryPointOptions {
+  /**
+    indicates the number of levels ("callers") above the line in the code this initEntryPoint() was placed in should be considered the entry point module.
+    If this is not specified, it's assumed to be 1, which means the actual module that called initEntryPoint().  If you set this as 2, then the entry point
+    would be whatever module called the module, that called initEntryPoint(). etc.
+  */
+  levelsAbove?:number,
+  /**
+    if errorSupport.ts is producing relative links in it's stack trace that vscode can't find when you click on them, try setting this option.
+
+    vscode uses it's open project folder as the root of clickable relative paths in the debug console.  Set this to a relative path that
+    takes you from the path of your running application's entry point, to the open folder in vscode. For example, if you have this
+    structure:
+
+    /myProjects
+      /myApp
+        /out
+          hello.js
+          hello.js.map
+        /src
+          hello.ts
+
+    if you have /myProjects/myApp open in vscode, then make this call in hello.ts:
+      `errorSupport.initEntryPoint({relativePathFromScriptToVSCodeFolder:'../'})`
+  */
+  relativePathFromScriptToVSCodeFolder?:string
+}
+
 /**
- * this should be called on the first line of code in the entry point of the project.  This helps eliminate bootstrap
- * code from error stack traces.  It also is a more definitive way of getting the entry point of a project.  Relying
- * on `process.mainModule.filename` or `import.meta.uri` is a little brittle because they change depending on how
- * your project was launched.
+ * this should be called on the first line of code in the entry point of the project.  If you don't call this,
+ * by default, the entry point will be inferred from `process.mainModule.filename` or `import.meta.uri`.
+ * However, those calls are somewhat brittle because the data returned by them change depending on how
+ * your project was launched. Calling `initEntryPoint()` is always recommended because it's a more definitive
+ * way of letting errorSupport.ts figure out the entry point module.
+ *
+ * If you have an app that has a lot of bootstrap code, calling this from the module you consider to be the
+ * real entry point will cause bootstrap code to be omitted from error stack traces.  Usually the bootstrap
+ * code is not helpful and just adds clutter to already difficult to read stack traces.
  */
-export function initEntryPoint(options?:{levelsAbove?:number, relativePathToProjectRoot?:string}) {
+export function initEntryPoint(options?:InitEntryPointOptions) {
   let levelsAbove = options?.levelsAbove ?? 1;
   let item:StackItem | undefined;
-  if (typeof options?.relativePathToProjectRoot == 'string') {
+  if (typeof options?.relativePathFromScriptToVSCodeFolder == 'string') {
     item = getCallerLocation();
     if (item)
-      settings.projectRootPath = ns.resolvePath( ss.extractPath(item.originalLocation?.file ?? item.file), options.relativePathToProjectRoot);
+      settings.projectRootPath = ns.resolvePath( ss.extractPath(item.originalLocation?.file ?? item.file), options.relativePathFromScriptToVSCodeFolder);
   }
   if (!item || levelsAbove > 1)
     item = getCallerLocation(levelsAbove);

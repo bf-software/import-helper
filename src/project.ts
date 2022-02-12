@@ -429,7 +429,7 @@ export class Project {
         let fromRootDir = ss.forwardSlashes( path.resolve( rootDir, anyModuleSpecifier ) );
         let found = this.sourceModules.byUniversalPathShortenedModuleSpecifier(fromRootDir)
         if (found)
-          return {universalPathModuleSpecifier:found.value.universalPathModuleSpecifier, sourceModule:found.value};
+          return {universalPathModuleSpecifier:found.value.universalPathModuleSpecifier};
       }
 
     }
@@ -439,6 +439,13 @@ export class Project {
     let found = this.sourceModules.byUniversalPathShortenedModuleSpecifier(fromImportingModulePath)
     if (found)
       return {universalPathModuleSpecifier:found.value.universalPathModuleSpecifier, sourceModule:found.value};
+
+    // check if the path exists on disk, because `this.sourceModule` may not be established yet, especially during early calls (before all of the scanning can take place)
+    if (this.isLoading || this.isDirty) {
+      let file = as.getCodeFileOrFileSync(fromImportingModulePath);
+      if (file)
+        return {universalPathModuleSpecifier:file};
+    }
 
     // as a last resort, assume that it's a node_modules specifier, or maybe it is already an absolute path
     return {universalPathModuleSpecifier:anyModuleSpecifier};

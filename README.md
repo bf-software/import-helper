@@ -143,6 +143,16 @@ shows modules that are not referenced by your project code
 
 ## Release Notes
 
+### v0.9.0
+
+new features:
+* added separators and group names to search results:
+  - module searches that return a lot of modules are grouped by full modules, project modules, react, svelte, tests, misc files, node_modules, and imported symbols
+  - symbol searches are grouped by recommended full imports, available symbols, and generic full imports
+
+* added additional project source extensions such as .mjs, .cjs, .mts, .cts, .mjsx, .cjsx, etc...
+
+
 ### v0.8.0
 
 new features:
@@ -158,6 +168,7 @@ fixed issues:
 * stopped looking at `tsconfig.js --> include` to determine the modules available to Import Helper. IH now simply looks at all sub folders
   in the project for modules. (Developers may not want to use `tsconfig.js --> include` to include ambient modules at all but rather only
   import by using use import statements in modules.)
+
 
 ### v0.7.2
 

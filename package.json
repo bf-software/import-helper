@@ -3,10 +3,10 @@
 	"publisher": "bf-s",
 	"displayName": "Import Helper",
 	"description": "quickly add imports for modules and symbols to the top of your code (for .ts, .js, .tsx, .jsx, & .svelte)",
-	"version": "0.8.0",
+	"version": "0.9.0",
 	"icon": "out-bundle/images/BF-Software/icon.png",
 	"engines": {
-		"vscode": "^1.63.0"
+		"vscode": "^1.64.0"
 	},
 	"repository": {
 		"url": "https://github.com/bf-software/import-helper/",
@@ -120,7 +120,7 @@
 		"@types/node": "^16.11.7",
 		"@types/semver": "^7.3.9",
 		"@types/strip-comments": "^2.0.1",
-		"@types/vscode": "^1.63.0",
+		"@types/vscode": "^1.64.0",
 		"clean-terminal-webpack-plugin": "^3.0.0",
 		"clean-webpack-plugin": "^4.0.0",
 		"copy-webpack-plugin": "^10.1.0",

@@ -800,7 +800,7 @@ export function parseFloatLocale(numericString:string, locale = '') {
 }
 
 /**
- * (s)ingular (p)lural - returns the number concatinated with the `singular` param if the number == 1 or else, it returns `plural`.
+ * (s)ingular (p)lural - returns the number concatenated with the `singular` param if the number == 1 or else, it returns `plural`.
  * See `spHide()` to do the same thing without including the number.
  * @param num can be a number or a formatted floating point string of any non-scientific format, like: $400.45 or -200 or
  * (3,056.792). When sending a formatted string, the `locale` parameter is used to interpret the number.

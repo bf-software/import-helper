@@ -4,7 +4,6 @@ import { ImportStatement, ImportKind } from './importStatementParser';
 import { ProjectModule, SourceModule, NodeModule, SourceModuleImport, SourceSymbolImport } from './projectModule';
 import * as ss from './common/systemSupport';
 import { ModuleSymbol } from './moduleSymbol';
-import { cNonCodeModuleFileIcons, getModuleIcon } from './appSupport';
 import * as cs from './common/collectionSupport';
 import * as as from './appSupport';
 import { docs } from './document';
@@ -21,7 +20,7 @@ const cSGProjectSymbol = 4;
 let moduleItemButtons: vscode.QuickInputButton[] = [];
 export let settings = { moduleItemButtons };
 
-export function normalSort(items:ReferenceCountQuickPickItem[]) {
+export function normalSort(items:Array<ReferenceCountQuickPickItem>) {
 	items.sort( (a,b) => {
 		if (a.sortGroup == b.sortGroup)
 		  return a.sortText.localeCompare(b.sortText);
@@ -30,7 +29,7 @@ export function normalSort(items:ReferenceCountQuickPickItem[]) {
   });
 }
 
-export function weightedSort(items:ReferenceCountQuickPickItem[]) {
+export function weightedSort(items:Array<ReferenceCountQuickPickItem>) {
   let ws = new cs.WeightedSort<ReferenceCountQuickPickItem>();
 	let directCriteran = ws.addCriterian(60, (item) => item.directReferenceCount, {minimumHighValue:5});
 	let indirectCriterian = ws.addCriterian(20, (item) => item.indirectReferenceCount, {minimumHighValue:5});
@@ -47,6 +46,7 @@ export function weightedSort(items:ReferenceCountQuickPickItem[]) {
 
 export class ReferenceCountQuickPickItem extends PlainQuickPickItem {
   public importStatement:ImportStatement;
+  public sortGroupName: string = '';
 	public sortGroup: string = '';
 	public sortText: string = '';
   /**
@@ -100,6 +100,14 @@ export abstract class ProjectModuleQuickPickItem extends ReferenceCountQuickPick
 	}
 }
 
+export class SeparatorItem extends PlainQuickPickItem {
+  public kind = vscode.QuickPickItemKind.Separator;
+  constructor (label:string) {
+    super();
+    this.label = label;
+  }
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -113,7 +121,26 @@ export class SourceModuleQuickPickItem extends ProjectModuleQuickPickItem {
 		this.importStatement.universalPathModuleSpecifier = this.sourceModule.universalPathModuleSpecifier;
     this.indirectReferenceCount = this.sourceModule.usedByCount;
 		this.searchTargetLength = this.sourceModule.shortenedModuleName.length;
-		this.sortGroup = `${cSGSourceModule}-${projectModule.isCode ? '1':'2'}-${ss.extractFileExt(projectModule.shortenedModuleName)}`;
+    this.sortGroup = `${cSGSourceModule}`;
+    if (projectModule.isCode) {
+      this.sortGroup += '-0';
+      if (as.cReactExtensions.includes(projectModule.ext)) {
+         this.sortGroup += '-2';
+         this.sortGroupName = 'react';
+      } else if (as.cSvelteExtensions.includes(projectModule.ext)) {
+        this.sortGroup += '-3';
+        this.sortGroupName = 'svelte';
+      } else if (as.isTestModule(projectModule.shortenedModuleName)) {
+        this.sortGroup += '-4';
+        this.sortGroupName = 'tests';
+      } else {
+         this.sortGroup += '-0';
+         this.sortGroupName = 'project modules';
+      }
+    } else {
+      this.sortGroup += '-1';
+      this.sortGroupName = ss.trimStartChars(projectModule.ext,['.']);
+    }
 		this.sortText = projectModule.shortenedModuleName.toLowerCase();
 	}
 
@@ -126,7 +153,7 @@ export class SourceModuleQuickPickItem extends ProjectModuleQuickPickItem {
 		let moduleName = this.importStatement.shortenedModuleName;
 		if (this.importStatement.useModuleSpecifierExt && !this.importStatement.codeModuleHasIndex)
 		  moduleName += this.importStatement.codeModuleExt;
-		this.labelIcon = getModuleIcon(this.importStatement.shortenedModuleName, this.importStatement.isCode, false);
+		this.labelIcon = as.getModuleIcon(this.importStatement.universalPathModuleSpecifier, this.importStatement.isCode, false);
 		this.labelText = moduleName;
 
 		// description
@@ -163,6 +190,7 @@ export class NodeModuleQuickPickItem extends ProjectModuleQuickPickItem {
 		if (foundProjectNodeModule)
 			this.indirectReferenceCount = foundProjectNodeModule.value.usedByCount;
 		this.searchTargetLength = this.nodeModule.universalPathModuleSpecifier.length;
+    this.sortGroupName = 'node_modules';
 		this.sortGroup = String(cSGNodeModule);
   	this.sortText = this.nodeModule.universalPathModuleSpecifier.toLowerCase();
 	}
@@ -172,7 +200,7 @@ export class NodeModuleQuickPickItem extends ProjectModuleQuickPickItem {
   }
 
 	public render() {
-		this.labelIcon = getModuleIcon(this.nodeModule.shortenedModuleName, this.nodeModule.isCode, true);
+		this.labelIcon = as.getModuleIcon(this.nodeModule.universalPathModuleSpecifier, this.nodeModule.isCode, true);
 		this.labelText = this.nodeModule.universalPathModuleSpecifier;
 
 		this.description = '(node_modules)';
@@ -192,6 +220,7 @@ export class SourceModuleImportQuickPickItem extends ProjectModuleQuickPickItem 
 		this.importStatement.alias = this.sourceModuleImport.alias;
 		this.directReferenceCount = this.sourceModuleImport.usedByCount;
  		this.searchTargetLength = this.sourceModuleImport.aliasOrShortenedModuleName.length;
+    this.sortGroupName = 'full module imports';
     this.sortGroup = String(cSGProjectImport);
 	  this.sortText = ss.ifBlank(this.sourceModuleImport.alias, ss.extractFileName(this.sourceModuleImport.shortenedModuleName)).toLowerCase();
 	}
@@ -225,7 +254,7 @@ export class SourceSymbolImportQuickPickItem extends ProjectModuleQuickPickItem 
 		this.importStatement.symbols.add(this.sourceSymbolImport.name, this.sourceSymbolImport.alias);
 	  this.directReferenceCount = this.sourceSymbolImport.usedByCount;
 		this.searchTargetLength = (this.sourceSymbolImport.alias == '' ?  this.sourceSymbolImport.name.length : Math.min(this.sourceSymbolImport.name.length, this.sourceSymbolImport.alias.length) );
-
+    this.sortGroupName = 'imported symbols';
 		this.sortGroup = String(cSGProjectSymbol);
   	this.sortText = this.importStatement.symbols.items[0]!.nameAndAlias.toLowerCase();
 	}
@@ -274,9 +303,24 @@ export class SymbolQuickPickItem extends ProjectModuleQuickPickItem {
 }
 
 
-export class ModuleSearchQuickPickItems extends PlainQuickPickItems<ProjectModuleQuickPickItem> {
+export class ModuleSearchQuickPickItems extends PlainQuickPickItems<ProjectModuleQuickPickItem|SeparatorItem> {
 }
 
-export class SymbolSearchQuickPickItems extends PlainQuickPickItems<ProjectModuleQuickPickItem> {
+export class SymbolSearchQuickPickItems extends PlainQuickPickItems<ProjectModuleQuickPickItem|SeparatorItem> {
 
 }
+
+export function addModuleSearchSeparators(moduleSearchQuickPickItems: ModuleSearchQuickPickItems) {
+  let lastSortGroup = '';
+  let i = 0;
+  let item = moduleSearchQuickPickItems[i] as (ProjectModuleQuickPickItem|undefined); // <-- item will never be a SeparatorItems
+  while (item) {
+    if (lastSortGroup != item.sortGroup) {
+      lastSortGroup = item.sortGroup;
+      moduleSearchQuickPickItems.splice(i,0,new SeparatorItem(item.sortGroupName));
+    }
+    i++;
+    item = moduleSearchQuickPickItems[i] as (ProjectModuleQuickPickItem|undefined); // <-- item will never be a SeparatorItems
+  }
+}
+

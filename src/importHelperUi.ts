@@ -21,9 +21,9 @@ interface ProjectFileQuickPickItem {
 
 export class ImportHelperUi {
   private api = new ImportHelperApi();
-  private moduleQuickPick: PlainQuickPick<qpi.ProjectModuleQuickPickItem> | undefined;
+  private moduleQuickPick: PlainQuickPick<qpi.ProjectModuleQuickPickItem|qpi.SeparatorItem> | undefined;
   private moduleQuickPickItemButtons: vscode.QuickInputButton[] = [];
-  private symbolQuickPick: PlainQuickPick<qpi.ProjectModuleQuickPickItem> | undefined;
+  private symbolQuickPick: PlainQuickPick<qpi.ProjectModuleQuickPickItem|qpi.SeparatorItem> | undefined;
   private openModuleKey: string = '';
   private showReferencesKey: string = '';
   private lastModuleSearchValue: string = '';
@@ -178,7 +178,7 @@ export class ImportHelperUi {
 
       this.moduleQuickPick.onDidAccept(() => {
         if (this.moduleQuickPick!.selectedItems[0].isSelectable)
-          resolve(this.moduleQuickPick!.selectedItems[0]);
+          resolve(this.moduleQuickPick!.selectedItems[0] as qpi.ProjectModuleQuickPickItem);
       });
 
       this.moduleQuickPick.step = 1;
@@ -276,10 +276,10 @@ export class ImportHelperUi {
     // if we are already showing the quickpick with a highlighted item, open that item, or else open a new quickpick
     if (this.moduleQuickPick) {
       if (this.moduleQuickPick.activeItems[0])
-        this.api.openModule(this.moduleQuickPick.activeItems[0]);
+        this.api.openModule(this.moduleQuickPick.activeItems[0] as qpi.ProjectModuleQuickPickItem);
     } else if (this.symbolQuickPick) {
       if (this.symbolQuickPick.activeItems[0])
-        this.api.openModule(this.symbolQuickPick.activeItems[0]);
+        this.api.openModule(this.symbolQuickPick.activeItems[0] as qpi.ProjectModuleQuickPickItem);
     } else {
       this.startQuickPick(IHMode.openModule);
     }
@@ -329,7 +329,7 @@ export class ImportHelperUi {
 
       this.symbolQuickPick!.onDidChangeSelection(selection => {
         if (selection[0].isSelectable)
-          resolve(selection[0]);
+          resolve(selection[0] as qpi.ProjectModuleQuickPickItem);
       })
 
       this.symbolQuickPick.step = 2;

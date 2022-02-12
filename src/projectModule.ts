@@ -101,7 +101,7 @@ interface ModuleDescription {
 export abstract class ProjectModule {
   private _universalPathModuleSpecifier: string = '';
   private _universalPathShortenedModuleSpecifier = '';
-  private _codeModuleExt: string = '';
+  private _ext: string = '';
   private _isCode: boolean = false;
   private _codeModuleHasIndex: boolean = false;
   private _symbolQuality:number = 0;
@@ -111,9 +111,9 @@ export abstract class ProjectModule {
     return this._isCode;
   }
 
-  /** stores the actual extension of the module file if it's shortened module specifier (`.ts, .tsx, .js, .jsx`) */
-  public get codeModuleExt(): string {
-    return this._codeModuleExt;
+  /** stores the actual extension of the module file if it's known (`.d.ts, .ts, .tsx, .js, .jsx, .css, .html, etc...`) */
+  public get ext(): string {
+    return this._ext;
   }
 
   /** indicates whether or not the code module is an `/index.js` file */
@@ -146,9 +146,9 @@ export abstract class ProjectModule {
     this._universalPathModuleSpecifier = value;
     this._universalPathShortenedModuleSpecifier = moduleSpecifierJuggler.shortenedModuleSpecifier;
     this._isCode = moduleSpecifierJuggler.isCode;
-    this._codeModuleExt = moduleSpecifierJuggler.ext;
+    this._ext = moduleSpecifierJuggler.ext;
     this._codeModuleHasIndex = moduleSpecifierJuggler.hasIndex;
-    this._symbolQuality = as.cHiddenCodeExtensionsRank.length - as.getExtRankByExt(this.codeModuleExt);
+    this._symbolQuality = as.cHiddenCodeExtensionsRank.length - as.getExtRankByExt(this.ext);
   }
 
   /**
@@ -163,7 +163,7 @@ export abstract class ProjectModule {
   }
 
   /**
-   * gets the module name from the {@link universalPathShortenedModuleSpecifier}. (i.e. without /index or extensions when it's a code module)
+   * gets the module name from the {@link universalPathShortenedModuleSpecifier}. (i.e. without /index or optional code extensions when it's a code module)
    */
 	public get shortenedModuleName():string {
     return ss.extractFileName(this.universalPathShortenedModuleSpecifier);

@@ -14,11 +14,22 @@ const isDevelopment = !isProduction;
 let extensionOutputPath = path.resolve(__dirname,'./out-bundle/');
 let testsOutputPath = path.resolve(__dirname,'./out-tests-bundle/');
 
+
 // for production, clear the out-bundle folders
 if (isProduction) {
-  fs.rmSync(extensionOutputPath,{recursive: true});
-  fs.rmSync(testsOutputPath,{recursive: true});
+  if (fs.existsSync(extensionOutputPath))
+    fs.rmSync(extensionOutputPath,{recursive: true});
+  if (fs.existsSync(testsOutputPath))
+    fs.rmSync(testsOutputPath,{recursive: true});
 }
+
+
+if (!fs.existsSync(extensionOutputPath))
+  fs.mkdirSync(extensionOutputPath)
+
+if (!fs.existsSync(testsOutputPath))
+  fs.mkdirSync(testsOutputPath)
+
 
 // Set up the config common to both the extension and the extension's tests
 // (basically everything except the entry point and output location)

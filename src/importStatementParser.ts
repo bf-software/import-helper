@@ -401,7 +401,7 @@ export class ImportStatement extends Scanable {
 
     let moduleSpecifierJuggler = new as.ModuleSpecifierJuggler(anyModuleSpecifier);
 		this.useModuleSpecifierIndex = moduleSpecifierJuggler.hasIndex;
-    this.useModuleSpecifierExt = moduleSpecifierJuggler.ext != '';
+    this.useModuleSpecifierExt = as.cHiddenCodeExtensionsRank.includes(moduleSpecifierJuggler.ext);
 
 		let {universalPathModuleSpecifier, sourceModule} = (this.parent as Module).project.getUniversalPathModuleSpecifier((this.parent as Module).path, anyModuleSpecifier);
 		this.universalPathModuleSpecifier = universalPathModuleSpecifier;

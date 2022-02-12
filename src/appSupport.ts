@@ -135,16 +135,34 @@ export const cAppName = 'Import Helper';
 export const cGoToImportsPos = 'goToImports';
 export const cLastImportPos = 'lastImportPos';
 
-export const cJavascriptExtensions = new cs.FfArray('.mjs','.js','.jsx');
-export const cTypescriptExtensions = new cs.FfArray('.d.ts','.ts','.tsx');
+export const cJavascriptExtensions = new cs.FfArray(
+  '.mjs','.cjs','.js',
+  '.mjsx','.cjsx','.jsx'
+);
+export const cTypescriptExtensions = new cs.FfArray(
+  '.d.mts','.d.cts','.d.ts',
+  '.mts','.cts','.ts',
+  '.mtsx','.ctsx','.tsx'
+);
+export const cReactExtensions = new cs.FfArray(
+  '.mtsx','.ctsx','.tsx',
+  '.mjsx','.cjsx','.jsx'
+);
 export const cSvelteExtensions = new cs.FfArray('.svelte');
 export const cCodeExtensions = new cs.FfArray(...cJavascriptExtensions,...cTypescriptExtensions,...cSvelteExtensions);
-export const cHiddenCodeExtensionsRank = new cs.FfArray('.d.ts','.ts','.tsx','.js','.jsx');
-export const cNonHiddenCodeExtensions = new cs.FfArray('.mjs','.svelte');
+export const cHiddenCodeExtensionsRank = new cs.FfArray(  // <-- used for checking for these extensions when none are specified in import statements
+  '.d.cts','.d.ts',
+  '.cts','.ts',
+  '.ctsx','.tsx',
+  '.cjs','.js',
+  '.cjsx','.jsx'
+);
+export const cNonHiddenCodeExtensions = new cs.FfArray('.mts','.mjs','.svelte');
 export const cTestExtensions = new cs.FfArray('.test','.spec');
 
 export const cUnknownFileIcon = 'output';
 export const cCodeModuleIcon = 'file-text';
+export const cReactModuleIcon = 'file-code';
 export const cSvelteModuleIcon = 'file-code';
 export const cTestModuleIcon = 'beaker';
 export const cNodeModuleIcon = 'package';
@@ -175,6 +193,10 @@ export function isSvelteFile(fileOrFileName:string) {
   return Boolean( cSvelteExtensions.byFunc( ext => fileOrFileName.endsWith(ext) )  );
 }
 
+export function isReactModule(fileOrFileName:string) {
+  return Boolean( cReactExtensions.byFunc( ext => fileOrFileName.endsWith(ext) )  );
+}
+
 export function isCodeFile(fileOrFileName: string): boolean {
   return Boolean( cCodeExtensions.byFunc( ext => fileOrFileName.endsWith(ext) )  );
 }
@@ -192,8 +214,8 @@ export function initConfiguration() {
 
 /**
  * since module specifiers can be shortened to omit any code extensions or the use of /index, this class is used to store them in their shortened
- * form.  Sometimes we'll be given a shoretened specifier and have to look it up in our internal list of specifiers. Therefore we always shorten
- * specifiers before storing them, that way our lists contain the least common denominator for searching.
+ * form.  Most of the time, import statements use shortened specifiers therefore we'll have to look them up in our internal list of specifiers without
+ * extensions. Therefore we always shorten specifiers before storing them, that way our data contains the least common denominator for searching.
  *
  * @member shortenedModuleSpecifier does not include `/index` or code file extensions such as `.js, .ts,` etc.  It will include any extensions
  * used by other files, such as .css, .png, .ttf, etc.  "Shortened" only pertains to the ending of the specifier, not the path part.
@@ -203,42 +225,30 @@ export function initConfiguration() {
 export class ModuleSpecifierJuggler {
   public shortenedModuleSpecifier:string = '';
   public hasIndex:boolean = false;
-  /** contains the code file extension for code files (`.js, .ts,` etc.) if the specifier has been shortened */
   public ext:string = '';
   private _isCode: boolean;
 
-  constructor(nonShortenedModuleSpecifier:string);
-  constructor(shortenedModuleSpecifier:string, hasIndex:boolean, ext:string);
-  constructor(implementationModuleSpecifier:string, hasIndex?:boolean, ext?:string) {
-
-    if (typeof hasIndex != 'undefined' && typeof ext != 'undefined') {
-      // constructor(shortenedModuleSpecifier:string, hasIndex:boolean, ext:string);
-      this.shortenedModuleSpecifier = /*shortenedModuleSpecifier*/ implementationModuleSpecifier;
-      this.hasIndex = hasIndex;
-      this.ext = ext;
-
-    } else if (typeof hasIndex == 'undefined' && typeof ext == 'undefined') {
-      // constructor(longModuleSpecifier:string);
-      this.shortenedModuleSpecifier = /*longModuleSpecifier*/ implementationModuleSpecifier ;
-      this.ext = '';
-      this.hasIndex = false;
-      let pos = getHiddenCodeExtPos(this.shortenedModuleSpecifier);
-      if (pos > -1) {
-        this.ext = this.shortenedModuleSpecifier.substr(pos);
-        this.shortenedModuleSpecifier = this.shortenedModuleSpecifier.substring(0,pos);
+  constructor(nonShortenedModuleSpecifier:string) {
+    this._isCode = false;
+    this.shortenedModuleSpecifier = nonShortenedModuleSpecifier;
+    this.ext = as.extractCodeExt(this.shortenedModuleSpecifier);
+    if (this.ext) {
+      this._isCode = true;
+      //check if the module is in the form:  moduleName/index.*
+      let p = this.shortenedModuleSpecifier.lastIndexOf('/');
+      if (p > -1 && this.shortenedModuleSpecifier.substr(p,7) == '/index.') {
+        this.hasIndex = true;
+        this.shortenedModuleSpecifier = this.shortenedModuleSpecifier.substring(0,p);
+      } else {
+        // see if we need to strip the extension (we usually do)
+        if (!cNonHiddenCodeExtensions.includes(this.ext))
+          this.shortenedModuleSpecifier = this.shortenedModuleSpecifier.substring(0,this.shortenedModuleSpecifier.length - this.ext.length);
       }
-      if (this.shortenedModuleSpecifier.endsWith('/index')) {
-         this.hasIndex = true;
-        this.shortenedModuleSpecifier = this.shortenedModuleSpecifier.substring(0,this.shortenedModuleSpecifier.length - 6);
-      }
-
     } else
-      throw Error('ModuleSpecifier: invalid constructor params');
+      this.ext = ss.extractFileExt(this.shortenedModuleSpecifier);
 
-    this._isCode =
-      this.ext != '' ||
-      as.cSvelteExtensions.includes(ss.extractFileExt(this.shortenedModuleSpecifier)) ||
-      as.cNonHiddenCodeExtensions.includes(ss.extractFileExt(this.shortenedModuleSpecifier));
+    if (this.ext == '')
+      this._isCode = true; // <-- must assume this is a code module if we don't have any extension
   }
 
   public get nonShortenedModuleSpecifier() {
@@ -267,26 +277,37 @@ export let preferences = {
   moduleSpecifierPath: 'auto'
 }
 
-export function isTestModule(sortenedModuleName:string) {
-  let ext = ss.extractFileExt(sortenedModuleName);
+/*
+  test modules end with .test or .spec after their code extension has been stripped
+*/
+export function isTestModule(moduleNameWithOrWithoutExt:string) {
+  let codeExt = as.extractCodeExt(moduleNameWithOrWithoutExt);
+  let shortenedModuleName = moduleNameWithOrWithoutExt.substring(0,moduleNameWithOrWithoutExt.length - codeExt.length);
+  let ext = ss.extractFileExt(shortenedModuleName);
   return cTestExtensions.includes(ext);
 }
 
-export function getModuleIcon(shortenedModuleName:string, isCodeModule:boolean, isNodeModule:boolean):string {
+export function getModuleIcon(nonShortenedModuleName:string, isCodeModule:boolean, isNodeModule:boolean):string {
   if (isNodeModule)
     return cNodeModuleIcon;
 
-  let ext = ss.extractFileExt(shortenedModuleName).toLowerCase();
-  if (ext == '')
+  if (isCodeModule) {
+    if (isTestModule(nonShortenedModuleName))
+      return cTestModuleIcon;
+
+    let codeExt = extractCodeExt(nonShortenedModuleName).toLowerCase();
+
+    if (cReactExtensions.includes(codeExt))
+      return cSvelteModuleIcon;
+
+    if (cSvelteExtensions.includes(codeExt))
+      return cSvelteModuleIcon;
+
     return cCodeModuleIcon;
+  }
 
-  if (cTestExtensions.includes(ext))
-    return cTestModuleIcon;
-
-  if (cSvelteExtensions.includes(ext))
-    return cSvelteModuleIcon;
-
-  return cNonCodeModuleFileIcons.get(ext) ?? (isCodeModule ? cCodeModuleIcon : cUnknownFileIcon);
+  let ext = ss.extractFileExt(nonShortenedModuleName);
+  return cNonCodeModuleFileIcons.get(ext) ?? cUnknownFileIcon;
 }
 
 export function makeValidSymbolName(badSymbolName:string):string {
@@ -361,5 +382,36 @@ export async function getNodeModulePaths(importingModuleFile: string) {
     testPath = ss.extractPath(testPath);
   }
   return result;
+}
+
+export function extractCodeExt(file: string) {
+  for (let ext of cCodeExtensions) {
+    if (file.endsWith(ext))
+      return ext;
+  }
+  return '';
+}
+
+/**
+  follows the module resolution algorithm to turn an absolute module specifier into a complete file and path to the
+  module.  (Or if the file exists as-is, it will return that.)
+*/
+export function getCodeFileOrFileSync(shortenedAbsoluteModuleSpecifier: string):string {
+  if (ns.fileExistsSync(shortenedAbsoluteModuleSpecifier))
+    return shortenedAbsoluteModuleSpecifier;
+
+  for (let ext of as.cHiddenCodeExtensionsRank) {
+    let possibleFile = shortenedAbsoluteModuleSpecifier + ext;
+    if (ns.fileExistsSync(possibleFile))
+      return possibleFile;
+  }
+
+  for (let ext of as.cHiddenCodeExtensionsRank) {
+    let possibleFile = shortenedAbsoluteModuleSpecifier + '/index' + ext;
+    if (ns.fileExistsSync(possibleFile))
+      return possibleFile;
+  }
+
+  return '';
 }
 

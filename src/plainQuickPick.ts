@@ -36,7 +36,11 @@ export class PlainQuickPickItem implements vscode.QuickPickItem {
 	public picked: boolean = false;
 	public alwaysShow: boolean = true;
   public buttons: vscode.QuickInputButton[] = [];
+  public kind: vscode.QuickPickItemKind | undefined;
 
+  /**
+  * @deprecated `kind = QuickPickItemKind.Separator` should now be used instead
+  */
   public hasSeparatorLine: boolean = false;
   public isSelectable: boolean = true;
 
@@ -175,7 +179,7 @@ export class PlainQuickPick<T extends vscode.QuickPickItem> implements vscode.Qu
   public set matchOnDescription(matchOnDescription:boolean) { this.quickPick.matchOnDescription = matchOnDescription }
   public get matchOnDetail(): boolean { return this.quickPick.matchOnDetail }
   public set matchOnDetail(matchOnDetail:boolean) { this.quickPick.matchOnDetail = matchOnDetail }
-  public get sortByLabel(): boolean { return (this.quickPick as any).sortByLabel }  // sortByLabel isn't in the types yet as of vscode/index.d.ts v1.48. Oct-2021, still not there in v1.63
+  public get sortByLabel(): boolean { return (this.quickPick as any).sortByLabel }  // sortByLabel isn't in the types yet as of vscode/index.d.ts v1.48. Oct-2021, still not there in v1.64, Jan-2022
   public set sortByLabel(sortByLabel:boolean) { (this.quickPick as any).sortByLabel = sortByLabel }
   public get activeItems():readonly T[] { return this.quickPick.activeItems }
   public set activeItems(activeItems: readonly T[]) { this.quickPick.activeItems = activeItems }

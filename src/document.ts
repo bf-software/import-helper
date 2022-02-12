@@ -72,7 +72,7 @@ export class Document {
   }
 
   /**
-   * parses the current document if it a code module
+   * parses the current document if it is a code module
    */
 	public parseModule() {
     this.module = new Module(this.project!);
@@ -103,7 +103,7 @@ export class Document {
     returns a token suitable for using as the default string in an Add Import module search.
     Complete (non-partial) symbols will start with double quotes.
   */
-  public parseEditorSearchSymbol(): EditorSearchSymbol {
+  public parseEditorSearchSymbol(): EditorSearchSymbol | undefined {
 
     // grab the text of the source line left of the cursor
     let linePos = this.cursorPos - 1;
@@ -134,6 +134,9 @@ export class Document {
       }
       token.getNext();
     }
+
+    if (!lastSymbol)
+      return;
 
     let editorSearchSymbol = new EditorSearchSymbol();
     editorSearchSymbol.text = lastSymbol;
@@ -341,12 +344,12 @@ export class CodeDocuments extends cs.FfMap<vscode.TextDocument, Document> {
   public documentChanged(event: vscode.TextDocumentChangeEvent) {
     let codeDocument = this.get(event.document);
     if (!codeDocument) {
-      // if we haven't established a `Document` object for the vscode document, see if the active document is the document being changed.  
+      // if we haven't established a `Document` object for the vscode document, see if the active document is the document being changed.
       codeDocument = docs.active;
       if (!codeDocument || codeDocument.vscodeDocument != event.document)
         // if we haven't got a Document yet, and it's not for the active document, we don't need to do anything.
         return;
-    }  
+    }
 
     // making a note of the last changed time for Add Import to use
     if (codeDocument.recordLastChange)

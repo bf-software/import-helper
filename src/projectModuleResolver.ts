@@ -159,7 +159,7 @@ export class ProjectModuleResolver {
   }
 
   /**
-   * the search is complete when we've found a non-hidden extension file (.css, .svelte, etc.), a ts, a tsx, or a .d.ts
+   * the search is complete when we've found a non-hidden extension file (.css, .svelte, etc.), or a ts, a tsx, or a .d.ts
    * @param absoluteModulePath this is the starting point for kicking off the "main" algorithm that looks for module files
    * @param relativeModuleSpecifier this is a module specifier that can be resolved with the `absoluteModulePath` to locate a module
    */

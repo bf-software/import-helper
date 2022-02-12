@@ -478,8 +478,8 @@ export abstract class FfBaseSortedArray<V,F extends FfBaseArrayFound<V>> extends
   }
 
   /**
-  * @deprecated this simply works like a `delete()` followed by an `insert()` for sorted arrays. The reason it's
-  * deprecated is that the insert ability is too confusing for sorted arrays, since there can be no positional insert.
+  * @deprecated this simply works like a `delete()` followed by a `splice()` for sorted arrays. The reason it's
+  * deprecated is that splice's insert ability is too confusing for sorted arrays, since there can be no index based insert.
   */
   public splice(start: number, deleteCount: number, ...values: V[]): V[] {
     if (values.length == 0 || this._forceInternalSplice) {
@@ -507,7 +507,7 @@ export abstract class FfBaseSortedArray<V,F extends FfBaseArrayFound<V>> extends
  * keeps the values of the array sorted at all times.  As values are inserted, they are spliced into the
  * correct index position according to the sort.  Since the position of new values are controlled by the
  * sort, `push()`, `unshift()`, and `splice()` have no special effect because they each simply call
- * `insert()` internally.
+ * `internalSplice()`.
  */
 export class FfSortedArray<V> extends FfBaseSortedArray<V, FfArrayFound<V>> {
   protected foundClass = FfArrayFound;
@@ -548,7 +548,7 @@ export abstract class FfBaseUniqueSortedArray<V, F extends FfBaseArrayFound<V>> 
  * keeps the values of the array sorted at all times.  As values are inserted, they are spliced into the
  * correct index position according to the sort.  If the value already exists, it is simply ignored.  Since
  * the position of new values are controlled by the sort, `push()`, `unshift()`, and `splice()` have no
- * special effect because they each simply call `insert()` internally.
+ * special effect because they each simply call `internalSplice()`.
  */
 export class FfUniqueSortedArray<V> extends FfBaseUniqueSortedArray<V, FfArrayFound<V>> {
   protected foundClass = FfArrayFound;

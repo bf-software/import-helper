@@ -13,7 +13,7 @@
  *    - `/` means the root directory in linux
  *    - `c:/` means the root of the c drive in windows
  *    - `/home/user1/` refers to the `user1` directory
- *      (`/home/user1` -- without the ending `/` would refer to a file called "user1" in the home directory)
+ *      (`/home/user1` -- without the ending `/` would refer to a *file* called "user1" in the home directory, *not* a directory called "user1")
  *  - all file extensions start with a dot
  *    - `let typescriptExt = '.ts'`, is correct, but not this: `let typescriptExt = 'ts';`
  *
@@ -22,7 +22,7 @@
  *    - as in `let sourceFile = '/myProject/main.ts';`
  *    - or for realtive paths: `let sourceFile = '../main.ts';`
  *
- *  - variables pointing to a folder/directory should be called xxxxPath
+ *  - variables pointing to a folder/directory should be called xxxxPath (remember, all paths end with a '/')
  *    - as in `let sourcePath = '/myProject/';`
  *
  *  - variables containing just a file's name with extension (i.e. no path) should be called xxxxFileName
@@ -30,6 +30,15 @@
  *
  *  - variables containing just a file extension should be called xxxxExt
  *    - as in `let sourceExt = '.ts';`
+ *
+ * beyond this entrypont, this main code of this extension is found in:
+ *  - {@link ./importHelperUi.ts}
+ *  - {@link ./importHelperApi.ts}
+ *
+ * the data that this extension deals with can be found in the following modules:
+ *  - {@link ./project.ts}
+ *  - {@link ./projectModule.ts}
+ *
  */
 import * as vscode from 'vscode';
 import { ImportHelperUi, IHMode } from './importHelperUi';
@@ -43,12 +52,12 @@ import * as as from './appSupport';
 import { projects } from './project';
 
 // globals for debugging
-(global as any).$vscode = vscode;
-(global as any).$plainQuickPick = plainQuickPick;
-(global as any).$addImportAPI = addImportAPI;
-(global as any).$ss = ss;
-(global as any).$docs = docs;
-(global as any).$globals = vs.globals;
+// (global as any).$vscode = vscode;
+// (global as any).$plainQuickPick = plainQuickPick;
+// (global as any).$addImportAPI = addImportAPI;
+// (global as any).$ss = ss;
+// (global as any).$docs = docs;
+// (global as any).$globals = vs.globals;
 
 let addImportUI = new ImportHelperUi();
 

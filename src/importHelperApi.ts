@@ -1,4 +1,4 @@
-	/**
+/**
 	 * search strings:
 	 * - multiple search terms are separated by spaces
 	 * - there are 3 types of terms:
@@ -43,6 +43,7 @@ import { ModuleSearchTerms, SymbolSearchTerms, MTT } from './searchTerms';
 import { PlainQuickPickItem } from './plainQuickPick';
 import { ProjectModuleResolver, ProjectFileMap } from './projectModuleResolver';
 import { EditorSearchSymbol } from './document';
+import { ReferenceCountQuickPickItem } from './quickPickItems';
 
 export const cReferenceCountSortWeight = 70;
 export const cTargetLengthSortWeight = 30;
@@ -269,7 +270,7 @@ export class ImportHelperApi {
       return;
     docs.active?.syncEditor();
     let line = docs.active.getCursorLine();
-	let lastChangedLine = docs.active.lastChangedLine; 
+	let lastChangedLine = docs.active.lastChangedLine;
     if (line != lastChangedLine)
       return;
     return docs.active.parseEditorSearchSymbol();
@@ -316,7 +317,8 @@ export class ImportHelperApi {
  		  this.moduleSearchQuickPickItems.push(...this.searchNodeModulesForModuleSearch(moduleSearchTerms) );
 		}
 
-    qpi.normalSort(this.moduleSearchQuickPickItems);
+    qpi.normalSort(this.moduleSearchQuickPickItems as Array<ReferenceCountQuickPickItem>);
+
 		if (
       moduleSearchTerms.maxTermLength > 1 &&
       (
@@ -324,8 +326,12 @@ export class ImportHelperApi {
         moduleSearchTerms.hasType(MTT.moduleName) ||
         moduleSearchTerms.hasType(MTT.symbol)
       )
-    )
-      qpi.weightedSort(this.moduleSearchQuickPickItems);
+    ) {
+      qpi.weightedSort(this.moduleSearchQuickPickItems as Array<ReferenceCountQuickPickItem>);
+      if (this.moduleSearchQuickPickItems.length)
+        this.moduleSearchQuickPickItems.splice(0,0,new qpi.SeparatorItem('closest match/most used'));
+    } else
+      qpi.addModuleSearchSeparators(this.moduleSearchQuickPickItems);
 
     this.moduleSearchQuickPickItems.renderAll();
   }
@@ -344,19 +350,32 @@ export class ImportHelperApi {
     let symbolSearchTerms	= new SymbolSearchTerms();
     symbolSearchTerms.parseSearchText(searchText);
 
-    let recommendedImportCount = this.symbolSearchQuickPickItems.push(...this.recommendedSourceModuleImportsforSymbolSearch(symbolSearchTerms));
+    let recommended = this.recommendedSourceModuleImportsforSymbolSearch(symbolSearchTerms);
+    if (recommended.length > 0) {
+      this.symbolSearchQuickPickItems.push(new qpi.SeparatorItem(`full import${ss.spHide(recommended.length,'','s')} already used`));
+      this.symbolSearchQuickPickItems.push(...recommended);
+    }
 
-    this.symbolSearchQuickPickItems.push(...this.searchSymbolsForSymbolSearch(symbolSearchTerms));
+    let symbols = this.searchSymbolsForSymbolSearch(symbolSearchTerms)
+    if (symbols.length > 0) {
+      this.symbolSearchQuickPickItems.push(new qpi.SeparatorItem(`importable symbol${ss.spHide(symbols.length,'','s')}`));
+      this.symbolSearchQuickPickItems.push(...symbols);
+    }
 
     if (
       this.step1QPItem! instanceof qpi.SourceModuleQuickPickItem &&
       (!this.step1QPItem!.projectModule.isCode || this.step1QPItem?.projectModule.isSvelte) &&
-      recommendedImportCount >= 1
+      recommended.length >= 1
     ) {
-      // this is a non-code or a svelte file, so do don't bother to recommend anything since we already have at least one recommendation
+      // this is a non-code or a svelte file, so do don't bother to recommend anything more since we already have at least one recommendation
       // This is because there aren't that many ways to import those types of files, so whatever was used in the project before is good enough.
-    } else
-		  this.symbolSearchQuickPickItems.push(...this.recommendedModuleImportsForSymbolSearch(symbolSearchTerms));
+    } else {
+      recommended = this.recommendedModuleImportsForSymbolSearch(symbolSearchTerms)
+      if (recommended.length > 0) {
+        this.symbolSearchQuickPickItems.push(new qpi.SeparatorItem(`full import${ss.spHide(recommended.length,'','s')}`));
+		    this.symbolSearchQuickPickItems.push(...recommended);
+      }
+    }
 
 		this.symbolSearchQuickPickItems.renderAll();
   }
@@ -511,8 +530,8 @@ export class ImportHelperApi {
     qpi.normalSort(items);
     qpi.weightedSort(items);
 
-		if (items.length > 0)
-		  items[items.length-1].hasSeparatorLine = true;
+		// if (items.length > 0)
+		//   items[items.length-1].hasSeparatorLine = true;
 		return items;
 	}
 
