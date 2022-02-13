@@ -73,6 +73,7 @@ import * as as from './appSupport';
 import { SourceModuleImports, SourceModuleImport } from './projectModule';
 import { docs } from './document';
 import * as ns from './common/nodeSupport';
+import { ProjectModuleResolver } from './projectModuleResolver';
 
 /**
  * contains all of the details pertaining to a project, such as configuration info from `package.json`,
@@ -402,7 +403,7 @@ export class Project {
    *
    * @returns an object containing universalPathModuleSpecifier, and possibly the sourceModule it was found in.
    */
-  public getUniversalPathModuleSpecifier(importingModulePath: string, anyModuleSpecifier:string):{universalPathModuleSpecifier:string, sourceModule?:SourceModule} {
+  public async getUniversalPathModuleSpecifier(importingModulePath: string, anyModuleSpecifier:string):Promise<{universalPathModuleSpecifier:string, sourceModule?:SourceModule}> {
     let anyShortenedModuleSpecifier = new as.ModuleSpecifierJuggler(anyModuleSpecifier).shortenedModuleSpecifier;
 
     if (this.config) {
@@ -442,9 +443,10 @@ export class Project {
 
     // check if the path exists on disk, because `this.sourceModule` may not be established yet, especially during early calls (before all of the scanning can take place)
     if (this.isLoading || this.isDirty) {
-      let file = as.getCodeFileOrFileSync(fromImportingModulePath);
-      if (file)
-        return {universalPathModuleSpecifier:file};
+      let resolver = new ProjectModuleResolver(this);
+      let found = (await resolver.getProjectFiles(importingModulePath+'dummy.ts',anyModuleSpecifier, /*skip node modules = */ true)).first;
+      if (found)
+        return {universalPathModuleSpecifier:found.key};
     }
 
     // as a last resort, assume that it's a node_modules specifier, or maybe it is already an absolute path
@@ -482,7 +484,7 @@ export class Project {
     module.file = sourceModuleToScan.universalPathModuleSpecifier;
     module.project = this;
     module.sourceCode = ss.bufferToString( await vscode.workspace.fs.readFile( vscode.Uri.file(sourceModuleToScan.universalPathModuleSpecifier) ));
-    module.scan();
+    await module.scan();
     for (let importStatement of module.importStatements) {
 
       if (importStatement.sourceModule) {

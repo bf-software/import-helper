@@ -391,27 +391,3 @@ export function extractCodeExt(file: string) {
   }
   return '';
 }
-
-/**
-  follows the module resolution algorithm to turn an absolute module specifier into a complete file and path to the
-  module.  (Or if the file exists as-is, it will return that.)
-*/
-export function getCodeFileOrFileSync(shortenedAbsoluteModuleSpecifier: string):string {
-  if (ns.fileExistsSync(shortenedAbsoluteModuleSpecifier))
-    return shortenedAbsoluteModuleSpecifier;
-
-  for (let ext of as.cHiddenCodeExtensionsRank) {
-    let possibleFile = shortenedAbsoluteModuleSpecifier + ext;
-    if (ns.fileExistsSync(possibleFile))
-      return possibleFile;
-  }
-
-  for (let ext of as.cHiddenCodeExtensionsRank) {
-    let possibleFile = shortenedAbsoluteModuleSpecifier + '/index' + ext;
-    if (ns.fileExistsSync(possibleFile))
-      return possibleFile;
-  }
-
-  return '';
-}
-

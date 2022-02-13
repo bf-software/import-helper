@@ -92,7 +92,7 @@ export class ImportHelperApi {
     await docs.active.syncProject( options?.onLoadingMilestone ?? (()=>{}) );
 
 		// need to parse the module to figure out where the imports are
-		docs.active.parseModule();
+		await docs.active.parseModule();
 
   }
 
@@ -112,7 +112,7 @@ export class ImportHelperApi {
 
 	public async openModule(item: qpi.ProjectModuleQuickPickItem) {
     let resolver = new ProjectModuleResolver(docs.active!.project!);
-    let files = await resolver.getProjectFiles(docs.active!.project!.projectPath+'dummy.ts',item.importStatement.universalPathModuleSpecifier);
+    let files = await resolver.getProjectFiles(docs.active!.project!.projectPath+'dummy.ts',item.importStatement.universalPathModuleSpecifier, /*skip node modules = */ false);
     let fileToOpen = '';
     if (files.size == 0)
       this.onShowMessage.cue({msg:`Open Module: can't find "${vs.removeCodicons(item.label).trim()}"`, style:MessageStyle.info});

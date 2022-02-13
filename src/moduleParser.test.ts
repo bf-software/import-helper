@@ -12,27 +12,27 @@ qt.module( () => {
     return new Module(project);
   }
 
-  function checkNextInsert(expectedNewlines:number,code:string) {
+  async function checkNextInsert(expectedNewlines:number,code:string) {
     let pos = code.indexOf('|');
     code = code.replace('|','');
     let module = createModule();
     module.sourceCode = code;
-    module.scan();
+    await module.scan();
     qt.testValue(module.nextImportInsertPos).shouldEqual(pos);
     qt.testValue(module.nextImportNewlinesBefore).shouldEqual(expectedNewlines);
   }
 
-  qt.test('find the position of the first and last imports',() =>{
+  qt.test('find the position of the first and last imports', async () =>{
     let module = createModule();
                        //  (ruler) 1 111111111222222 222233333333334 44444444455555555556
                        //01234567890 123456789012345 678901234567890 12345678901234567890
     module.sourceCode = '// comment\nimport "this";\nimport "that";\nlet x = 1;';
-    module.scan();
+    await module.scan();
     qt.testValue(module.importsStartPos).shouldEqual(11);
     qt.testValue(module.importsEndPos).shouldEqual(39);
   });
 
-  qt.test('should be the first line if there are no comments',() =>{
+  qt.test('should be the first line if there are no comments', async () =>{
     checkNextInsert(0, L`
       ||
       |
@@ -66,14 +66,14 @@ qt.module( () => {
     `);
   });
 
-  qt.test('adds new indented import into a svelte file', () => {
+  qt.test('adds new indented import into a svelte file', async () => {
     let module = createModule();
     module.sourceCode = L`
       |<script>
       |  import { one, two } from 'test';
     `;
     module.isSvelte = true;
-    module.scan();
+    await module.scan();
     let s = ss.splice(module.sourceCode, module.nextImportInsertPos, 0, '\n'.repeat(module!.nextImportNewlinesBefore) + module!.importIndentCharacters + `import {three} from 'test';`);
     qt.testValue(s).shouldEqual(L`
       |<script>

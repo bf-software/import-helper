@@ -150,8 +150,10 @@ new features:
   - module searches that return a lot of modules are grouped by full modules, project modules, react, svelte, tests, misc files, node_modules, and imported symbols
   - symbol searches are grouped by recommended full imports, available symbols, and generic full imports
 
-* added additional project source extensions such as .mjs, .cjs, .mts, .cts, .mjsx, .cjsx, etc...
+* added additional project code extensions such as .mjs, .cjs, .mts, .cts, .mjsx, .cjsx, etc...
 
+fixed issues:
+* if upon using IH for the first time after open a project, you tried to add an import statement that already existed, it would duplicate it in your code
 
 ### v0.8.0
 
@@ -166,8 +168,8 @@ new features:
 
 fixed issues:
 * stopped looking at `tsconfig.js --> include` to determine the modules available to Import Helper. IH now simply looks at all sub folders
-  in the project for modules. (Developers may not want to use `tsconfig.js --> include` to include ambient modules at all but rather only
-  import by using use import statements in modules.)
+  in the project for modules. (this is because developers may not want to use `tsconfig.js --> include` to include ambient modules at all but rather only
+  import by using import statements in modules.)
 
 
 ### v0.7.2

@@ -74,7 +74,7 @@ export class Document {
   /**
    * parses the current document if it is a code module
    */
-	public parseModule() {
+	public async parseModule() {
     this.module = new Module(this.project!);
     this.module.file = this.file;
     if (this.isCode) {
@@ -84,7 +84,7 @@ export class Document {
         let tabSize = vscode.workspace.getConfiguration('editor',this.vscodeDocument?.uri).get<number>('tabSize') ?? 2;
         this.module.defaultImportIndentCharacters = (insertSpaces ? ' '.repeat(tabSize) : '\t');
       }
-		  this.module.scan();
+		  await this.module.scan();
     }
 	}
 

@@ -27,6 +27,9 @@ export interface ProjectFileDetails {
   relativeDisplayFile?:string;
 }
 
+/**
+  a map of <string (the actual file), {@link ProjectFileDetails}>
+*/
 export class ProjectFileMap extends cs.FfMap<string,ProjectFileDetails> {
   public add(file: string, locationInfo:string) {
     let found = this.byKey(file);
@@ -39,8 +42,8 @@ export class ProjectFileMap extends cs.FfMap<string,ProjectFileDetails> {
 export class ProjectModuleResolver {
   private exportFiles = new cs.FfMap<string, string>();
   private typescriptVersion: string = '';
-
-  public projectFileMap = new ProjectFileMap();
+  private projectFileMap = new ProjectFileMap();
+  private skipNodeModules:boolean = false;
 
   constructor(
     public project:Project
@@ -113,12 +116,18 @@ export class ProjectModuleResolver {
    *  ... and then if "full source code" or a non hidden code ext was found, we're done, else, run the "main" algorithm again for /project/node_modules, and /node_modules if they exist
    *      "full source code" is if a .ts, or .tsx was found, or both a .d.ts and a .mjs, .js, .jsx was found.
    *
+   *  @param importingModuleFile absolute path and file name to the importing file
+   *  @param anyModuleSpecifier any kind of specifier:
+   *    - full absolute path and file name
+   *    - relative path
+   *    - shortened file name (no extensions)
    */
-  public async getProjectFiles(importingModuleFile:string, anyModuleSpecifier:string):Promise<ProjectFileMap> {
+  public async getProjectFiles(importingModuleFile:string, anyModuleSpecifier:string, skipNodeModules:boolean):Promise<ProjectFileMap> {
     let isAbsolute = ss.isAbsolutePath(anyModuleSpecifier);
     let isRelative = !isAbsolute && ss.isRelativePath(anyModuleSpecifier);
     let isBaseRelative = !isAbsolute && !isRelative;
 
+    this.skipNodeModules = skipNodeModules;
     this.projectFileMap.clear();
 
     this.typescriptVersion = await this.project.getPackageVersion('typescript');
@@ -146,8 +155,10 @@ export class ProjectModuleResolver {
       }
 
       // try all node_modules
-      for (let nodeModulePath of this.project.nodeModulesPaths)
-        await this.mainAlgorithm(nodeModulePath, './'+baseRelativeModuleSpecifier);
+      if (!skipNodeModules) {
+        for (let nodeModulePath of this.project.nodeModulesPaths)
+          await this.mainAlgorithm(nodeModulePath, './'+baseRelativeModuleSpecifier);
+      }
     }
 
     for (let [file, projectFileDetails] of this.projectFileMap) {

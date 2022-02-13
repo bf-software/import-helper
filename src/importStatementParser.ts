@@ -386,7 +386,7 @@ export class ImportStatement extends Scanable {
 
 
   /**
-	 * setting this also sets the {@link universalPathModuleSpecifier} and {@link sourceModule}.
+	 * use the async function: {@link setQuotedModuleSpecifier}() to set.
 	 */
   public get quotedModuleSpecifier():string {
 	  return (
@@ -395,7 +395,11 @@ export class ImportStatement extends Scanable {
 			this.moduleQuoteCharacter
 		);
 	}
-  private set quotedModuleSpecifier(quotedString:string) {
+
+  /**
+	 * setting this also sets the {@link universalPathModuleSpecifier} and {@link sourceModule}.
+	 */
+  public async setQuotedModuleSpecifier(quotedString:string) {
 		this.moduleQuoteCharacter = quotedString.charAt(0);
 		let anyModuleSpecifier = ss.trimChars(quotedString,[this.moduleQuoteCharacter]);
 
@@ -403,7 +407,7 @@ export class ImportStatement extends Scanable {
 		this.useModuleSpecifierIndex = moduleSpecifierJuggler.hasIndex;
     this.useModuleSpecifierExt = as.cHiddenCodeExtensionsRank.includes(moduleSpecifierJuggler.ext);
 
-		let {universalPathModuleSpecifier, sourceModule} = (this.parent as Module).project.getUniversalPathModuleSpecifier((this.parent as Module).path, anyModuleSpecifier);
+		let {universalPathModuleSpecifier, sourceModule} = await (this.parent as Module).project.getUniversalPathModuleSpecifier((this.parent as Module).path, anyModuleSpecifier);
 		this.universalPathModuleSpecifier = universalPathModuleSpecifier;
 		this.sourceModule = sourceModule;
 	}
@@ -450,10 +454,10 @@ export class ImportStatement extends Scanable {
 		return result;
 	}
 
-	private scanModule() {
+	private async scanModule():Promise<boolean> {
 		if ( this.token.is(TK.FromKeyword) )
 			if ( this.token.nextIs(TK.StringLiteral) ) {
-				this.quotedModuleSpecifier = this.token.text;
+				await this.setQuotedModuleSpecifier(this.token.text);
 				return true;
 			}
     return false;
@@ -495,13 +499,13 @@ export class ImportStatement extends Scanable {
 	 * import type {<Symbols>} from '<Module>'
 	 * import type * as <AllAlias> from '<Module>'
 	 */
-	private scanImportStatement():boolean {
+	private async scanImportStatement():Promise<boolean> {
 		this.token.getNext();
 
 		// import '<module>'
 		if ( this.token.is(TK.StringLiteral) ) {
       this.importKind = ImportKind.moduleOnly;
-			this.quotedModuleSpecifier = this.token.text;
+			this.setQuotedModuleSpecifier(this.token.text);
 			return true;
 
     // import type ...
@@ -562,11 +566,11 @@ export class ImportStatement extends Scanable {
     return false;
 	}
 
-	public scan() {
+	public async scan() {
 		let skipPos = this.token.endPos+1;
     this.indentCharacters = ss.getEndChars(splitTrivia(this.token.trivia)[1],[' ','\t']);
 		this.startLocation = this.token.startLocation;
-		this.isUnderstood = this.scanImportStatement();
+		this.isUnderstood = await this.scanImportStatement();
 		if (this.isUnderstood) {
 			if (this.token.nextIs(TK.SemicolonToken))
 			  this.endsWithSemiColon = true;

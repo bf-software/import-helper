@@ -151,7 +151,7 @@ export class Module extends Scanable {
   }
 
 
-  public scan() {
+  public async scan() {
     let justGotAnImport = false;
 
     this.importStatements.length = 0;
@@ -167,7 +167,7 @@ export class Module extends Scanable {
 			if (this.token.kind == TK.ImportKeyword) {
         nonImportTokenCount = 0;
 				let importStatement = new ImportStatement(this);
-				importStatement.scan();
+				await importStatement.scan();
         if (importStatement.isUnderstood) {
 				  this.importStatements.push(importStatement);
           justGotAnImport = true;
