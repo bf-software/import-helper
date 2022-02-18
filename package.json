@@ -111,9 +111,17 @@
 		"dev-build": "webpack --config ./webpack.config.mjs | less -f -r",
 		"dev-watch": "webpack --config ./webpack.config.mjs --watch",
 		"prod-build": "cross-env NODE_ENV=production webpack --config ./webpack.config.mjs",
-		"prod-map-explorer-html": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map",
 		"prod-map-explorer-list": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map --tsv",
+		"prod-map-explorer-html": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map",
 		"prod-vsce-deploy": "mkdirp ./deploy && vsce package --no-dependencies --out ./deploy"
+	},
+	"scripts-comments": {
+		"dev-build": "a non-watching build for developing. only used when a lot of errors are found and I need to peruse them slowly",
+    "dev-watch": "use this to build while developing",
+		"prod-build": "must use this before deploying",
+		"prod-map-explorer-list": "use this after prod-build to make sure that we're only deploying the things we need",
+		"prod-map-explorer-html": "just a visual reporesentation of the above list (note: zoom out in the browser for a better view)",
+		"prod-vsce-deploy": "create the deploy/xxxxxx.visix file"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.4",

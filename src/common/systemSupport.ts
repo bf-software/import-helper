@@ -467,6 +467,7 @@ export function stringToBuffer(s:string): Uint8Array {
   return Buffer.from(s);
 }
 
+/** @deprecated change to Buffer.toString() */
 export function bufferToString(buffer:any[] | Uint8Array):string {
   let result = '';
   for (let byte of buffer) {
@@ -1789,3 +1790,10 @@ export function minMax(value: number, min: number, max: number): number {
     return max;
   return value;
 }
+
+export function rawTextDateToLocalMidnight(rawTextDate: string):Date {
+  if (!rawTextDate.match(/^\d\d\d\d-[01]\d-[0-3]\d$/) )
+    throw new Error('rawTextDateToLocalMidnight(): rawTextDate must be in the form YYYY-MM-DD');
+  return new Date(rawTextDate+'T00:00:00.000');
+}
+

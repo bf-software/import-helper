@@ -205,7 +205,7 @@ export async function getUserDataPath():Promise<string> {
 export async function getKeyBinding(command:string):Promise<string> {
   let keyBindingFile = await getUserDataPath() + 'User/keybindings.json';
   if (await ns.fileExists(keyBindingFile)) {
-    let keyBindingsJson = strip( ss.bufferToString(await ns.readFile(keyBindingFile)) );
+    let keyBindingsJson = strip( (await ns.fileToString(keyBindingFile)) );
     let keyBindings:any[] = JSON.parse(keyBindingsJson);
     for (let binding of keyBindings) {
       if ((binding.command ?? '') == command)
@@ -216,7 +216,7 @@ export async function getKeyBinding(command:string):Promise<string> {
   // package.json is in the parent of the extensionEntryPointPath
   let packageJsonFile = ss.extractPath(globals.extensionEntryPointPath) + 'package.json';
   if ( await ns.fileExists(packageJsonFile) ) {
-    let packageObj:any = JSON.parse( ss.bufferToString(await ns.readFile( packageJsonFile )) );
+    let packageObj:any = JSON.parse( (await ns.fileToString( packageJsonFile )) );
     let keyBindings:any[] = packageObj.contributes.keybindings;
     for (let binding of keyBindings) {
       if ((binding.command ?? '') == command)

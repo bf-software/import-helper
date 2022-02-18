@@ -291,6 +291,10 @@ export async function readFile(file:string):Promise<Uint8Array> {
   return fsp.readFile(file);
 }
 
+export async function fileToString(file:string):Promise<string> {
+  return (await fsp.readFile(file, {encoding: 'utf8'}));
+}
+
 export async function writeFile(file:string, buffer:Uint8Array):Promise<void> {
   return fsp.writeFile(file, buffer, {encoding:'binary'});
 }

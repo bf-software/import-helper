@@ -227,9 +227,11 @@ export class ModuleSpecifierJuggler {
   public hasIndex:boolean = false;
   public ext:string = '';
   private _isCode: boolean;
+  private _isShortened: boolean;
 
   constructor(nonShortenedModuleSpecifier:string) {
     this._isCode = false;
+    this._isShortened = false;
     this.shortenedModuleSpecifier = nonShortenedModuleSpecifier;
     this.ext = as.extractCodeExt(this.shortenedModuleSpecifier);
     if (this.ext) {
@@ -241,14 +243,18 @@ export class ModuleSpecifierJuggler {
         this.shortenedModuleSpecifier = this.shortenedModuleSpecifier.substring(0,p);
       } else {
         // see if we need to strip the extension (we usually do)
-        if (!cNonHiddenCodeExtensions.includes(this.ext))
+        if (!cNonHiddenCodeExtensions.includes(this.ext)) {
           this.shortenedModuleSpecifier = this.shortenedModuleSpecifier.substring(0,this.shortenedModuleSpecifier.length - this.ext.length);
+          this._isShortened = true;
+        }
       }
     } else
       this.ext = ss.extractFileExt(this.shortenedModuleSpecifier);
 
-    if (this.ext == '')
+    if (this.ext == '') {
       this._isCode = true; // <-- must assume this is a code module if we don't have any extension
+      this._isShortened = true; // <-- and we'll assume it's shortened
+    }
   }
 
   public get nonShortenedModuleSpecifier() {
@@ -263,11 +269,11 @@ export class ModuleSpecifierJuggler {
   }
 
   public get isShortened():boolean {
-    return this.ext != '';
+    return this._isShortened;
   }
 
   public asString(params:{includeIndex:boolean, includeExt:boolean}) {
-    return this.shortenedModuleSpecifier + (params.includeIndex && this.hasIndex ? '/index' : '') +  (params.includeExt ? this.ext : '');
+    return this.shortenedModuleSpecifier + (params.includeIndex && this.hasIndex ? '/index' : '') +  (params.includeExt && this.isShortened ? this.ext : '');
   }
 }
 
@@ -390,4 +396,10 @@ export function extractCodeExt(file: string) {
       return ext;
   }
   return '';
+}
+
+export function deriveModuleNameAlias(shortenedModuleName: string) {
+  if ( as.cNonHiddenCodeExtensions.includes(ss.extractFileExt(shortenedModuleName)) )
+    shortenedModuleName = ss.removeFileExt(shortenedModuleName);
+  return as.makeValidSymbolName(shortenedModuleName);
 }

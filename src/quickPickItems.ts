@@ -138,8 +138,9 @@ export class SourceModuleQuickPickItem extends ProjectModuleQuickPickItem {
          this.sortGroupName = 'project modules';
       }
     } else {
-      this.sortGroup += '-1';
-      this.sortGroupName = ss.trimStartChars(projectModule.ext,['.']);
+      let plainExt = ss.trimStartChars(projectModule.ext,['.']);
+      this.sortGroup += '-1-'+plainExt;
+      this.sortGroupName = plainExt;
     }
 		this.sortText = projectModule.shortenedModuleName.toLowerCase();
 	}
@@ -150,9 +151,7 @@ export class SourceModuleQuickPickItem extends ProjectModuleQuickPickItem {
 
 	public render() {
 	  // label
-		let moduleName = this.importStatement.shortenedModuleName;
-		if (this.importStatement.useModuleSpecifierExt && !this.importStatement.codeModuleHasIndex)
-		  moduleName += this.importStatement.codeModuleExt;
+		let moduleName = this.importStatement.displayModuleName;
 		this.labelIcon = as.getModuleIcon(this.importStatement.universalPathModuleSpecifier, this.importStatement.isCode, false);
 		this.labelText = moduleName;
 

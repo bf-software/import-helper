@@ -364,11 +364,12 @@ export class ImportHelperApi {
 
     if (
       this.step1QPItem! instanceof qpi.SourceModuleQuickPickItem &&
-      (!this.step1QPItem!.projectModule.isCode || this.step1QPItem?.projectModule.isSvelte) &&
-      recommended.length >= 1
+      (!this.step1QPItem.projectModule.isCode || this.step1QPItem.projectModule.isSvelte) &&
+      recommended.length >= 1 &&
+      this.recommendedHasMainIdentifier(recommended,as.deriveModuleNameAlias(this.step1QPItem.importStatement.shortenedModuleName))
     ) {
-      // this is a non-code or a svelte file, so do don't bother to recommend anything more since we already have at least one recommendation
-      // This is because there aren't that many ways to import those types of files, so whatever was used in the project before is good enough.
+      // this is a non-code or a svelte file, so only recommend the generic full imports if the already used full imports
+      // that were used are different.
     } else {
       recommended = this.recommendedModuleImportsForSymbolSearch(symbolSearchTerms)
       if (recommended.length > 0) {
@@ -380,6 +381,9 @@ export class ImportHelperApi {
 		this.symbolSearchQuickPickItems.renderAll();
   }
 
+  public recommendedHasMainIdentifier(recommended: qpi.ProjectModuleQuickPickItem[], mainIdentifier: string):boolean {
+    return Boolean( recommended.find( (item) => item.importStatement.mainIdentifier == mainIdentifier ) );
+  }
 
   public async addImportStatement(fromStep:number, editorSearchSymbol?:EditorSearchSymbol) {
 		this.addStatementWarning = '';
@@ -409,6 +413,10 @@ export class ImportHelperApi {
 				existingStatement.importKind = ImportKind.defaultAlias;
 			  existingStatement.alias = selectedQPI.importStatement.defaultAlias;
 			}
+
+      if (existingStatement.alias != selectedQPI.importStatement.alias) {
+        this.addStatementWarning = 'a statement for this module already exists with a different alias';
+      }
 
   		await docs.active.insertText(existingStatement.startLocation.position, existingStatement.asText(), existingStatement.endLocation.position+1);
 		  docs.active.rememberPos(cLastImportPos, existingStatement.startLocation.position + existingStatement.cursorPosAfterAsText);
@@ -575,10 +583,7 @@ export class ImportHelperApi {
 			  items.push(item);
       }
 
-			let nameAlias = tempSourceModuleImport.shortenedModuleName;
-      if ( as.cNonHiddenCodeExtensions.includes(ss.extractFileExt(nameAlias)) )
-        nameAlias = ss.removeFileExt(nameAlias);
-			nameAlias = as.makeValidSymbolName(nameAlias);
+			let nameAlias = as.deriveModuleNameAlias(tempSourceModuleImport.shortenedModuleName);
 
 			// add an option for a default alias of the same name as the module
 			item = new qpi.SourceModuleImportQuickPickItem(docs.active!.module!, tempSourceModuleImport);

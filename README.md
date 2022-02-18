@@ -147,13 +147,13 @@ shows modules that are not referenced by your project code
 
 new features:
 * added separators and group names to search results:
-  - module searches that return a lot of modules are grouped by full modules, project modules, react, svelte, tests, misc files, node_modules, and imported symbols
-  - symbol searches are grouped by recommended full imports, available symbols, and generic full imports
+  - module searches that return a lot of modules are grouped by full module imports, project modules, react, svelte, tests, misc files, node_modules, and imported symbols
+  - symbol searches are grouped by full imports already used, available symbols, and generic full imports
 
 * added additional project code extensions such as .mjs, .cjs, .mts, .cts, .mjsx, .cjsx, etc...
 
 fixed issues:
-* if upon using IH for the first time after open a project, you tried to add an import statement that already existed, it would duplicate it in your code
+* if upon using IH for the first time after opening a project, you tried to add an import statement that already existed, it would duplicate it in your code
 
 ### v0.8.0
 

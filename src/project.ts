@@ -202,7 +202,7 @@ export class Project {
 
   public async init() {
     if (this.packageJsonFile != '') {
-      let packageJson = ss.bufferToString( await ns.readFile(this.packageJsonFile) );
+      let packageJson = ( await ns.fileToString(this.packageJsonFile) );
       let packageObject = JSON.parse(packageJson);
       if (typeof packageObject.dependencies == 'object')
         for (let dependency in packageObject.dependencies) {
@@ -257,7 +257,7 @@ export class Project {
     for (let nodeModulesPath of this.nodeModulesPaths) {
       let packageJsonFile = nodeModulesPath + packageName + '/package.json';
       if (await ns.fileExists(packageJsonFile)) {
-        let json = ss.bufferToString( await ns.readFile(packageJsonFile) );
+        let json = await ns.fileToString(packageJsonFile);
         return JSON.parse(json);
       }
     }
@@ -458,23 +458,23 @@ export class Project {
    * used by {@link getFilesFromAbsoluteModuleSpecifier} to return all code files that
    * could match the absoluteModuleSpecifier.
    */
-  private async getAllFiles(absoluteModuleSpecifier:string):Promise<string[]> {
-    // if its pointing to a folder, it means that it is really an "index.*" file in that folder
-    if (await ns.pathExists(absoluteModuleSpecifier))
-      absoluteModuleSpecifier = absoluteModuleSpecifier + '/index';
+  // private async getAllFiles(absoluteModuleSpecifier:string):Promise<string[]> {
+  //   // if its pointing to a folder, it means that it is really an "index.*" file in that folder
+  //   if (await ns.pathExists(absoluteModuleSpecifier))
+  //     absoluteModuleSpecifier = absoluteModuleSpecifier + '/index';
 
-    let workPath = ss.extractPath(absoluteModuleSpecifier);
-    let fileName = ss.extractFileName(absoluteModuleSpecifier);
-    let regexExtensions = cCodeExtensions.map( (ext) => ss.escapeRegex(ext) );
-    let extensionsRegex = new RegExp(ss.escapeRegex(fileName) + '('+ ss.concatWS('|',...regexExtensions) +')$'); // <-- /fileName\.(\.d\.ts|\.ts|\.js|\.tsx|\.jsx)$/ regex filters by extensions
-    let fileNames:string[] = [];
-    try {
-      fileNames = await ns.getItemsAtPathWithRegex(workPath, extensionsRegex, true /* files only */);
-    } catch {
-      // do nothing, folder doesn't exist
-    }
-    return fileNames.map((fileName)=>ss.prefix(workPath, fileName));
-  }
+  //   let workPath = ss.extractPath(absoluteModuleSpecifier);
+  //   let fileName = ss.extractFileName(absoluteModuleSpecifier);
+  //   let regexExtensions = cCodeExtensions.map( (ext) => ss.escapeRegex(ext) );
+  //   let extensionsRegex = new RegExp(ss.escapeRegex(fileName) + '('+ ss.concatWS('|',...regexExtensions) +')$'); // <-- /fileName\.(\.d\.ts|\.ts|\.js|\.tsx|\.jsx)$/ regex filters by extensions
+  //   let fileNames:string[] = [];
+  //   try {
+  //     fileNames = await ns.getItemsAtPathWithRegex(workPath, extensionsRegex, true /* files only */);
+  //   } catch {
+  //     // do nothing, folder doesn't exist
+  //   }
+  //   return fileNames.map((fileName)=>ss.prefix(workPath, fileName));
+  // }
 
 
   public async scanSourceModuleForImports(sourceModuleToScan:SourceModule) {
@@ -483,7 +483,7 @@ export class Project {
     let module = new Module(this);
     module.file = sourceModuleToScan.universalPathModuleSpecifier;
     module.project = this;
-    module.sourceCode = ss.bufferToString( await vscode.workspace.fs.readFile( vscode.Uri.file(sourceModuleToScan.universalPathModuleSpecifier) ));
+    module.sourceCode = ( await vscode.workspace.fs.readFile( vscode.Uri.file(sourceModuleToScan.universalPathModuleSpecifier) )).toString();
     await module.scan();
     for (let importStatement of module.importStatements) {
 

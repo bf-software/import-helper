@@ -338,7 +338,7 @@ export class SourceModules extends cs.FfMap<string,SourceModule> {
       //     this.addByModuleFile( ss.internalizeFile(uri.fsPath ) );
     // }
 
-    let allExtensions = ss.commas(...as.cCodeExtensions,...as.additionalExtensions,...as.cSvelteExtensions);
+    let allExtensions = ss.commas(...as.cCodeExtensions,...as.cSvelteExtensions,...as.additionalExtensions);
     let foundURIs = await vscode.workspace.findFiles('**/'+vs.getWorkspaceRelativePath(this.project.projectPath)+'**/*{'+allExtensions+'}', '**/{node_modules'+ss.prefix(',',ss.commas(this.excludePaths))+'}/**');
     for (let uri of foundURIs)
       if (! this.isExcludedByRootPaths( ss.internalizeFile(uri.fsPath) ) )

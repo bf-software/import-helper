@@ -216,6 +216,12 @@ export class ImportStatement extends Scanable {
 	 */
   public sourceModule: SourceModule | undefined;
 
+  public get displayModuleName(): string {
+    if (this.useModuleSpecifierExt && this._moduleSpecifierJuggler.isShortened && !this.codeModuleHasIndex)
+		  return this.shortenedModuleName + this._moduleSpecifierJuggler.ext;
+    return this.shortenedModuleName;
+  }
+
 	public get isCode() {
 	  return this._moduleSpecifierJuggler.isCode;
 	};
@@ -262,11 +268,6 @@ export class ImportStatement extends Scanable {
     else if (this.hasDefaultAlias)
       return this.defaultAlias
     return this.alias;
-  }
-
-  /** stores the actual extension of the module file if it's a code module (`.ts, .tsx, .js, .jsx, etc.`) */
-  public get codeModuleExt(): string {
-    return this._moduleSpecifierJuggler.ext;
   }
 
   /** indicates whether or not the code module is an `/index.js` file */
