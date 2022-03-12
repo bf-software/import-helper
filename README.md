@@ -1,12 +1,24 @@
 # Import Helper
 
-Lets you blast through the tedious chore of manually adding import statements to the top of your typescript, javascript, and svelte modules. The process is simple: first you find your module using the search, then you either pick a symbol or use an alias. You also get editor commands that let you quickly jump up to your import section and back down to your code. Import Helper supplements vscode's built-in auto-import mechanism. These commands are among my most often used while developing. I expect they will become the same for you!
+Lets you blast through the tedious chore of manually adding import statements to the top of your typescript, javascript, and svelte modules. The process is simple: first you find your module using the search, then you either pick a symbol or import the whole module using an alias. Import Helper supplements vscode's built-in auto-import mechanism. These commands are among my most often used while developing. I expect they will become the same for you!
 
 ![Import Helper Demo Animation](https://github.com/bf-software/import-helper/blob/main/docs/screenShots/screenToGif/main-addSymbolImport.gif?raw=true)
 
-<p style="text-align: center;"><a href="https://www.youtube.com/watch?v=BX_zH0-KL2Q">☆ ☆ ☆  Watch the video walkthrough. ☆ ☆ ☆</a></p>
+<p align="center"><a href="https://www.youtube.com/watch?v=BX_zH0-KL2Q">☆ ☆ ☆  Watch the video walkthrough. ☆ ☆ ☆</a></p>
 
-## Main Commands
+<br>
+
+## Main Commands (Quick Overview)
+| *command*         | *keyboard shortcut*             | *description*                             |
+|-------------------|---------------------------------|-------------------------------------------|
+| **Add Import**    | `Alt+F11 (⌥F11 on Mac)`        | quickly pick a module or symbol to import |
+| **Open Module**   | `Alt+O (⌥O on Mac)`            | open a module by name, alias or symbol    |
+| **Go To Imports** | `Ctrl+Shift+Up (⇧⌘⭡ on Mac)`   | move the cursor to the import section     |
+| **Go Back Down**  | `Ctrl+Shift+Down (⇧⌘⭣ on Mac)` | move the cursor back down to the code     |
+
+<br>
+
+## Main Commands (Full Explanation)
 
 ### Add Import ┊ `Alt+F11 (⌥F11 on Mac)`
 
@@ -48,6 +60,14 @@ Missing node_modules? - If you open Import Helper while the active editor tab in
 be missing all of the node_modules your project would normally have access to.  This can't be helped because of the way Import Helper gathers the node_modules to show.  Simply reopen Import Helper while editing a code file to avoid this.
 
 When invoking `Add Import`, the most recently typed in symbol/identifier to the left of the cursor will become the default text for the module search.  If there isn't any symbol, the text of the most recent search is used.  If a partial symbol, symbol alias, module, or modual alias was found to the left of the cursor, selecting a matching symbol, symbol alias, module, or modual alias will complete the text in the editor.
+
+### Open Module ┊ `Alt+O (⌥O on Mac)`
+
+Opens the highlighted module in the editor. This is often a more direct route to the module's code than using vscode's `GoTo File... (Ctrl+P | ⌘P)` command, which can include many other files besides source modules.  Another benefit of opening modules this way is that you can find modules by their aliases or by the symbols your project uses.  Activating this command in Step 1 of `Add Import (Alt+F11 | ⌥I)` will open the selected module instead of importing it. This command can also be started directly from the editor, in which case it will open Import Helper in "Open Module" mode.  Then selecting a module using the enter key will immediately open it instead of importing it.
+
+If a module is represented by multiple code files, Import Helper will ask to choose one of the files to open. For example, a module may have both a .d.ts and a .js file available.
+
+Lastly, if the current project is not a Typescript or Javascript project, this will simply run vscode's `GoTo File... (Ctrl+P | ⌘P)` command so that you can use the same keyboard shortcut to open files in projects using other languages besides ts/js/tsx/jsx/svelte.
 
 ### Go to Imports ┊ `Ctrl+Shift+Up (⇧⌘⭡ on Mac)`
 
@@ -101,14 +121,6 @@ Shows all modules available to your project (only available in Step 1 of Import 
 
 Shows all symbols already imported somewhere in your project (only available in Step 1 of Import Helper)
 
-### Open Module ┊ `Alt+O (⌥O on Mac)`
-
-Opens the highlighted module in the editor. This is often a more direct route to the module's code than using vscode's `GoTo File... (Ctrl+P | ⌘P)` command, which can include many other files besides source modules.  Another benefit of opening modules this way is that you can find modules by their aliases or by the symbols your project uses.  Activating this command in Step 1 of `Add Import (Alt+F11 | ⌥I)` will open the selected module instead of importing it. This command can also be started directly from the editor, in which case it will open Import Helper in "Open Module" mode.  Then selecting a module using the enter key will immediately open it instead of importing it.
-
-If a module is represented by multiple code files, Import Helper will ask to choose one of the files to open. For example, a module may have both a .d.ts and a .js file available.
-
-Lastly, if the current project is not a Typescript or Javascript project, this will simply run vscode's `GoTo File... (Ctrl+P | ⌘P)` command so that you can use the same keyboard shortcut to open files in projects using other languages besides ts/js/tsx/jsx/svelte.
-
 ### Show Module References ┊ `Alt+R (⌥R on Mac)`
 
 Shows all of the modules in your project that use the selected module or symbol. This command can also be started directly from the editor, in which case it will open Import Helper in "Show Module References" mode.  Then selecting a module will then immediately open the list of references.
@@ -143,7 +155,12 @@ shows modules that are not referenced by your project code
 
 ## Release Notes
 
-### v0.9.0
+### v1.0.0 - (Mar 12, 2022)
+
+* documentation updates
+* tiny fixes
+
+### v0.9.0 - (Feb 18, 2022)
 
 new features:
 * added separators and group names to search results:
@@ -155,7 +172,7 @@ new features:
 fixed issues:
 * if upon using IH for the first time after opening a project, you tried to add an import statement that already existed, it would duplicate it in your code
 
-### v0.8.0
+### v0.8.0 - (Feb 3, 2022)
 
 new features:
 * when `Add Import ┊ Alt+F11 (⌥F11 on Mac)` is invoked, the nearest symbol/identifier to the left of the cursor will be used as the default
@@ -172,7 +189,7 @@ fixed issues:
   import by using import statements in modules.)
 
 
-### v0.7.2
+### v0.7.2 - (Dec 18, 2021)
 
 new features:
 * moved the `Open Module` and `Show All References` buttons from the toolbar, to the individual items found by the search
@@ -183,6 +200,6 @@ fixed some behind-the-scenes issues:
 * fixed the link to the repository in the vscode extension marketplace
 
 
-### v0.7.1
+### v0.7.1 - (Dec 5, 2021)
 
 initial release.

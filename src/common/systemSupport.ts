@@ -599,82 +599,69 @@ export function strToLines(s:string):{line:string, newLine:string}[] {
    return result;
 }
 
+
 /**
- * indents each line in a multiline string by the amount specified in the `indents` params.
+ * indents each line in a multiline string.
  * @param s the multiline string
- * @param indents indicates the number of spaces to indent each line starting from the first line. The last entry
- * will be the amount of space to indent for the remainder of the lines encountered.
+ * @param indentString the string to use to indent
  */
-export function indent(s:string, size:number|number[], indentCharacter:string = ' ') {
-  if (!Array.isArray(size))
-    size = [size];
+export function indent(s:string, indentString:string):string;
+/**
+ * indents each line in a multiline string.
+ * @param s the multiline string
+ * @param indentStringArray the strings to use to indent--one string for each line. The last entry will be the indent for the remainder of the lines encountered.
+ */
+export function indent(s:string, indentStringArray:string[]):string;
+/**
+ * indents each line in a multiline string by the amount specified in the params.
+ * @param s the multiline string
+ * @param size indicates the number of spaces to indent each line starting from the first line.
+ * @param indentCharacter the character used to do the indenting (defaults to space)
+ */
+export function indent(s:string, size:number, indentCharacter?:string):string;
+/**
+ * indents each line in a multiline string by the amount specified in the params.
+ * @param s the multiline string
+ * @param sizeArray indicates the number of spaces to indent each line starting from the first line. The last entry will be the amount of space to indent for the remainder of the lines encountered.
+ * @param indentCharacter the character used to do the indenting (defaults to space)
+ */
+export function indent(s:string, sizeArray:number[], indentCharacter?:string):string;
+export function indent(s:string, secondParam:string|string[]|number|number[], indentCharacter:string = ' '):string {
+  let sizes:number[] = [];
+  let indents:string[] = [];
+
+  let usesSizes = false;
+  if (typeof secondParam == 'number') {
+    usesSizes = true;
+    sizes = [secondParam];
+  } else if (Array.isArray(secondParam) && typeof secondParam[0] == 'number') {
+    usesSizes = true;
+    sizes = secondParam as number[];
+  } else if (typeof secondParam == 'string') {
+    indents = [secondParam];
+  } else
+    indents = secondParam as string[];
+
+  let arrayLength = indents.length;
+  if (usesSizes)
+    arrayLength = sizes.length;
+
   let lines = strToLines(s);
   let result = '';
   let indentIndex = 0;
   for (let item of lines) {
-    result += (indentCharacter.repeat(size[indentIndex]) + item.line).trimEnd() + item.newLine;
-    if (indentIndex < size.length-1)
+    let indentString = '';
+    if (usesSizes)
+      indentString = indentCharacter.repeat(sizes[indentIndex]);
+    else
+      indentString = indents[indentIndex];
+    result += prefix(indentString, item.line) + item.newLine;
+    if (indentIndex < arrayLength-1)
       indentIndex++;
   }
   return result;
 }
 
-
-/**
- * internal function for the "L" function which is used as a "tag" for template strings.
- * @see [L](#L) the "L" function in this module
- */
-export function lineUpWithCode(templateStrings:TemplateStringsArray,...params:(string|number)[]):string {
-  let fullUnescaped = templateStrings.raw.join('$');  // <-- starts us off with something like '\n   this $ is\n   a template'
-  let matches = Array.from( fullUnescaped.matchAll(/(\r\n|\n|\\r\\n|\\n)(\s*)(\S)/g) ); // <-- matches <newline sequence><spaces><first non space char>
-  let removeSpaces = Number.MAX_SAFE_INTEGER;
-  for (let match of matches) {
-    let spaces = trimStartChars(match[2] ?? '',['\n','\r']);
-    removeSpaces = Math.min(spaces.length,removeSpaces);
-  }
-
-  // remove the leading newline
-  if (matches[0] && typeof matches[0][1] == 'string') {
-    matches[0][1] = '';
-  }
-
-  // remove spaces
-  let p = matches[0]?.index ?? 0;   // <-- starts off at the index of the first match therefore skipping any characters on the first line, which is supposed to be empty
-  let linedUpString = '';
-  for (let match of matches) {
-    linedUpString +=
-      fullUnescaped.substring(p,match.index) +              // <-- the text from the prior line
-      match[1] +                                            // <-- the newline character(s) from the prior line
-      match[2].substr(0, match[2].length - removeSpaces) +  // <-- trims down the space starting from the end of match[2]
-      (match[3] == '|' ? '' : match[3]);                    // <-- removes any starting pipes
-    p = match.index! + match[0].length;                     // <-- moves p to the point after the match
-  }
-
-  // at this point p is sitting on the first character after the last <newline><spaces><non-space> character.
-  // the only possible remaining pattern is <non-spaces>[newline][spaces].  So, we will always grab the
-  // text from p to the newline or the end of the string if there is no newline.  Then we have to decide
-  // if the spaces after the newline should be trimmed and kept, or all thrown away
-  let remaining = fullUnescaped.substr(p);
-  let newLineMatch = remaining.match(/(\r\n|\n|\\r\\n|\\n)/);
-  if (newLineMatch && (newLineMatch.index != null)) {
-    linedUpString += remaining.substring(0,newLineMatch.index + newLineMatch[0].length);
-    remaining = remaining.substr(newLineMatch.index + newLineMatch[0].length); // <-- get everything after the newline, which should be spaces
-    remaining = remaining.substr(0, remaining.length - removeSpaces) // <-- trim down the spaces
-  }
-  linedUpString += remaining
-
-  // replace params - we can't simply use unescapeslashes() and replace the dollar signs because the template string may contain them
-  let result = '';
-  let i = 0;
-  p = 0;
-  for (let match of linedUpString.matchAll(/(?<!\\)\$/g) ) {  // <-- finds all unescaped dollar signs
-    result += unescapeSlashes(linedUpString.substring(p, match.index)) + (params[i++] ?? '');   // <-- unescapes the template strings before the dollar sign, then add the next param
-    p = match.index! + 1;
-  }
-  result += unescapeSlashes(linedUpString.substr(p));  // <-- remaining text at the end of the string
-
-  return result;
-}
 
 /**
  * "L" stands for "Line up with code" and is a tag for template strings that ensures any extra
@@ -686,6 +673,7 @@ export function lineUpWithCode(templateStrings:TemplateStringsArray,...params:(s
  *       this is a div
  *     </div>
  *   `;
+ * };
  * ```
  * will return a string that looks like
  * ```
@@ -697,7 +685,8 @@ export function lineUpWithCode(templateStrings:TemplateStringsArray,...params:(s
  * character is indented 4 spaces into the code, so, 4 spaces will be removed from the
  * beginning of each line.
  *
- * You may also use the pipe character "|" to identify the end of the indent space like so:
+ * #### pipe character
+ * you may also use the pipe character "|" to identify the end of the indent space like so:
  * ```
  * function getString() {
  *   return L`
@@ -711,8 +700,8 @@ export function lineUpWithCode(templateStrings:TemplateStringsArray,...params:(s
  * '    this is indented, but\n    not as much as it would ordinarily be.'`
  * ```
  *
- * You may also use multiple pipes to create a visual barrier between the code's indent space, and
- * your string's indent space:
+ * #### pipe barrrier
+ * you may also use multiple pipes to create a visual barrier between the code's indent space, and your string's indent space:
  * ```
  * function getString() {
  *   return L`
@@ -721,10 +710,10 @@ export function lineUpWithCode(templateStrings:TemplateStringsArray,...params:(s
  *     |  </p>
  *     |</div>
  *   `;
+ * }
  * ```
- * note that you will always need to escape any pipe characters with a backslash in your template
- * string that you want to be included in the string. The above example will even work without any pipes
- * because the indent will be calculated based on the left most character of any line. for example:
+ * #### automatic indents
+ * by the way, a pipe doesn't have to be used in this case, because the last `</div>` will serve as the indent marker. This returns the same string as the above example that has a pipe for each line.
  * ```
  * function getString() {
  *   return L`
@@ -733,12 +722,121 @@ export function lineUpWithCode(templateStrings:TemplateStringsArray,...params:(s
  *       </p>
  *     </div>
  *   `;
+ * }
  * ```
- * returns the same string as the above example that has a pipe for each line.
+ * #### other pipes
+ * pipes found in the text in other areas will just be normal pipes.  There's no need to escape them in any way. For example:
+ * ```
+ * function getString() {
+ *   return L`
+ *     |  if (a == 1 || b == 2)
+ *     |    c = 3;
+ *   `;
+ * }
+ * ```
+ * this uses the inital pipes to establish the indent space, and the `or` operator in the if statement is left alone
+ *
+ *
+ * #### multiline variables
+ * even multiline variables in the template will be indented properly, for example:
+ * ```
+ * function getString() {
+ *   let snippet = L`
+ *     <p>
+ *       this is indented even further
+ *     </p>
+ *   `;
+ *   return L`
+ *     <div>
+ *       ${snippet}
+ *     </div>
+ *   `;
+ * }
+ * ```
+ * this will return
+ * ```
+ * '<div>\n  <p>\n    this is indented even further\n  </p>\n</div>\n'`
+ * ```
+ *
  */
 export function L(templateStrings:TemplateStringsArray,...params:(string|number)[]):string {
-  return lineUpWithCode(templateStrings,...params);
+  let joinedTemplate = templateStrings.join('\0');  // <-- starts us off with something like '\n   this \0 is\n   a template'
+
+  // break the string into lines, and grab the indents for each line
+  let lineMatches = Array.from( joinedTemplate.matchAll(/(\r\n|\n)(\s*)(\S)/g) ); // <-- matches <newline sequence><spaces><first non space char>
+  let removeSpaces = Number.MAX_SAFE_INTEGER;
+  for (let match of lineMatches) {
+    let spaces = trimStartChars(match[2] ?? '',['\n','\r']);
+    removeSpaces = Math.min(spaces.length,removeSpaces);
+  }
+
+  // remove the leading newline
+  if (lineMatches[0] && typeof lineMatches[0][1] == 'string') {
+    lineMatches[0][1] = '';
+  }
+
+  // remove spaces
+  let p = lineMatches[0]?.index ?? 0;   // <-- starts off at the index of the first match therefore skipping any characters on the first line, which is supposed to be empty
+  let linedUpString = '';
+  for (let lineMatch of lineMatches) {
+    let newLine = lineMatch[1];
+    let indent = lineMatch[2];
+    let firstNonSpace = lineMatch[3];
+    linedUpString +=
+      joinedTemplate.substring(p,lineMatch.index) +  // <-- the text from the prior line
+      newLine;                                       // <-- the newline character(s) from the prior line
+    if (firstNonSpace == '|') { // <-- if is a pipe
+      if (removeSpaces == indent.length)  // and the pipe is an indent marker
+        linedUpString += indent.substr(0, indent.length - removeSpaces);  // <-- trims down the space starting from the end of indent
+      else   // <-- and the pipe is not an indent marker
+        linedUpString += indent.substr(0, indent.length - (removeSpaces+1)) + '|';  // add an extra space for removal because a space is technically the indent marker now
+    } else // <-- a normal line with no pipe involved
+      linedUpString += indent.substr(0, indent.length - removeSpaces) + firstNonSpace; // <-- trims down the space starting from the end of indent
+    p = lineMatch.index! + lineMatch[0].length;                     // <-- moves p to the point after the match
+  }
+
+  // at this point p is sitting on the first character after the last <newline><spaces><non-space> character.
+  // the only possible remaining pattern is <non-spaces>[newline][spaces].  So, we will always grab the
+  // text from p to the newline or the end of the string if there is no newline.  Then we have to decide
+  // if the spaces after the newline should be trimmed and kept, or all thrown away
+  let remaining = joinedTemplate.substr(p);
+  let newLineMatch = remaining.match(/(\r\n|\n)/);  // why? \\r\\n|\\n
+  if (newLineMatch && (newLineMatch.index != null)) {
+    linedUpString += remaining.substring(0,newLineMatch.index + newLineMatch[0].length);
+    remaining = remaining.substr(newLineMatch.index + newLineMatch[0].length); // <-- get everything after the newline, which should be spaces
+    remaining = remaining.substr(0, remaining.length - removeSpaces) // <-- trim down the spaces
+  }
+  linedUpString += remaining
+
+  // replace params - we can't simply use unescapeslashes() and replace the nulls because the template string may contain them
+  let result = '';
+  let i = 0;
+  p = 0;
+  for (let match of linedUpString.matchAll(/(?<!\\)\0/g) ) {  // <-- finds all nulls which show where the params go
+    //let preText = unescapeSlashes(linedUpString.substring(p, match.index)); // <-- unescapes the lined up string before the null
+    let preText = linedUpString.substring(p, match.index); // <-- gets the lined up string before the null
+    let param = String(params[i++] ?? '') ; // gets the param's text
+    let preTextIndent;
+    if (p == 0)
+      preTextIndent = (preText.match(/(?=\n|^)[\t\f\v ]+$/m) ?? [''])[0]; // if it's the first call, this gets trailing whitespace after a newline or start of string
+    else
+      preTextIndent = (preText.match(/(?<=\n)[\t\f\v ]+$/m) ?? [''])[0]; // else, just gets trailing whitespace after a newline
+    if (preTextIndent) {
+      param = indent(param, ['',preTextIndent]); // indent the param so it matches the template
+      let postText = linedUpString.substring(match.index!+1); // the text after the null
+      if (postText.match(/^[\t\f\v ]*\n/)) // if starts with optional whitespaces and then a newline
+        if (param.endsWith('\n')) // and the param ends with a newline
+          param = param.substring(0,param.length-1); // then remove the param's newline because we don't need it
+    }
+    result += preText + param; // add the param
+    p = match.index! + 1;
+  }
+  //result += unescapeSlashes(linedUpString.substr(p));  // <-- remaining text at the end of the string
+  result += linedUpString.substr(p);  // <-- remaining text at the end of the string
+
+  return result;
 }
+
 
 /**
  * converts a string template into a properly encoded URL.  You can use this
@@ -1796,4 +1894,3 @@ export function rawTextDateToLocalMidnight(rawTextDate: string):Date {
     throw new Error('rawTextDateToLocalMidnight(): rawTextDate must be in the form YYYY-MM-DD');
   return new Date(rawTextDate+'T00:00:00.000');
 }
-

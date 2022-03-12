@@ -131,6 +131,72 @@ qt.module( () => {
         `).shouldEqual('there should be three newlines after this\n\n\nand one after this\n');
       });
 
+      qt.test('tried to trick the algorithm with slashes', () => {
+        qt.testValue( L`
+          \\ohh ${'yea'}\\
+          \\$ haha!
+          \${}
+        `).shouldEqual(
+          '\\ohh yea\\\n'+
+          '\\$ haha!\n'+
+          '${}\n'
+         );
+      });
+
+      qt.test('tried to trick the algorithm with pipes', () => {
+        qt.testValue( L`
+          | ||ohh ${'yea'}||
+            |haha!|
+        `).shouldEqual(
+          ' ||ohh yea||\n'+
+          ' |haha!|\n'
+         );
+      });
+
+    });
+
+    qt.section('lineUpWithCode(`${withParams}`)', () => {
+
+      qt.test('simple param replacement', () => {
+        qt.testValue( L`
+          ${'hi'}
+          ${'there'}
+        `).shouldEqual('hi\nthere\n');
+      });
+
+      qt.test('was accidentally trimming params!', () => {
+        qt.testValue( L`
+          ${'ok:'} ${'this should line up:'} ${'with this'}
+          ${'ok:'} ${'short text:         '} ${'with this'}
+        `).shouldEqual(
+          'ok: this should line up: with this\n'+
+          'ok: short text:          with this\n'
+        );
+      });
+
+      qt.test('multiline params', () => {
+        let multiline = L`
+          <this>
+            <is>
+          <multiline>
+        `;
+        qt.testValue( L`
+          <multiline params>
+            ${multiline}
+          <are indented too!>
+        `).shouldEqual('<multiline params>\n  <this>\n    <is>\n  <multiline>\n<are indented too!>\n');
+      });
+
+      qt.test('sloppy multiline params', () => {
+        let multiline = L`
+          <two>
+          <lines>
+        `;
+        qt.testValue( L`
+          <sloppy>${multiline}<code>
+        `).shouldEqual('<sloppy><two>\n<lines>\n<code>\n');
+      });
+
     });
 
     qt.section('URL template tag: U``', () => {

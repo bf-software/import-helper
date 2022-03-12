@@ -65,7 +65,7 @@ const skipColor = ch.blue;
 //const cThumbsUpChar = '\u{1F44D}\uFE0E'; // <-- the \uFE0E keeps special characters from rendering as emojis, and instead uses normal text characters
 //const cThumbsDownChar = '\u{1F44E}\uFE0E';
 const cShouldBeIcon = '🠞'; // ☑ ➡ ► 🠞 🢂 ⮞
-const cBadValueIcon = '⚠'; // ☒ ×s
+const cBadValueIcon = '⚠'; // ☒ ×
 
 
 let testCount = 0;
@@ -199,6 +199,7 @@ abstract class TestItem {
   public indent(s:string,size?:number|number[],indentCharacter:string = cIndentCharacter):string {
     if (typeof size == 'undefined')
       size = this.indentSize;
+    //@ts-ignore: overloads got a little too complicated for ts
     return ss.indent(s,size,indentCharacter);
   }
 
@@ -658,7 +659,7 @@ class ValueTester {
   }
 
   private error(property:string, testValue:any, shouldBeLabel:string) {  // ☑ ☒ 🖒 🖓
-    let testValueLabel = 'test value';
+    let testValueLabel = 'but, got this';
     property = ss.infix('{…}.',property,': ');
     throw new TestValueError(L`
       ${cShouldBeIcon} ${shouldBeLabel}
@@ -667,7 +668,7 @@ class ValueTester {
   }
 
   private valueError(property:string, testValue:unknown, shouldBeValue:unknown, shouldBeLabel:string) {
-    let testValueLabel = `test value:`;
+    let testValueLabel = 'but, got this:';
     shouldBeLabel = `${shouldBeLabel}:`;
     property = ss.infix('{…}.',property,': ');
     let maxLength = Math.max(testValueLabel.length,shouldBeLabel.length);
@@ -1211,6 +1212,3 @@ export async function start(options?:QuickTestOptions) {
 
 // initialization ------------------------------------------------------------------------------
 export let globals = new QuickTestGlobls();
-
-
-

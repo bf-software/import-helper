@@ -2,8 +2,8 @@
 	"name": "import-helper",
 	"publisher": "bf-s",
 	"displayName": "Import Helper",
-	"description": "quickly add imports for modules and symbols to the top of your code (for .ts, .js, .tsx, .jsx, & .svelte)",
-	"version": "0.9.0",
+	"description": "quickly import modules, aliases, and symbols via a search (for typescript, javascript, and svelte)",
+	"version": "1.0.0",
 	"icon": "out-bundle/images/BF-Software/icon.png",
 	"engines": {
 		"vscode": "^1.64.0"

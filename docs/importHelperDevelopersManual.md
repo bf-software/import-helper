@@ -34,7 +34,7 @@ There are 3 kinds of module specifiers:
      4.  in a the `node_modules` folder residing in the parent folder of the importing module -- and on and on until the root folder is reached
    - ex. `import * as ss from 'src/common/systemSupport';`  - can be set to mean `<your project folder>/src/common/systemSupport` using the `baseUrl`.
    - ex.  `import * as e from 'electron';` - this actually means `<your project folder>/node_modules/electron`
-   - remember: absolute paths are **not** "non-relative" in typescript, they are their own thing. Perhaps a better term for  this type of path: `import * as ss from 'src/common/systemSupport';` would be "base-relative".
+   - remember: absolute paths are **not** "non-relative" in typescript, they are their own thing. Perhaps a better term for this type of path: `import * as ss from 'src/common/systemSupport';` would be "a findable path".
 
 
 #### Basic Variable Rules
@@ -180,9 +180,10 @@ Modules offered by the node_modules folder are pulled in by leveraging vscode's 
 
 ## (easy items)
 
-### implement item separator
+### paths
 
-once the proposed quickpick item separator feature is released (https://github.com/microsoft/vscode/issues/74967), use it instead of the underscore string in the quickpick item description.
+scan folders pointed to by tsconfig.json --> paths for modules in addition to the [project folder tree / tsconfig.json --> include areas] in case some paths reside outside of the project.
+(although, I'm not sure if TypeScript modules will work if they are located outside of the project -- and not specified in the tsconfig.json --> include setting. I still need to do some investigation there.)
 
 ### (hard items)
 
