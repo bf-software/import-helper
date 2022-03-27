@@ -72,7 +72,6 @@ class ImportSymbols extends Scanable {
 		symbol.name = name;
 		symbol.alias = alias;
 	  this.items.push(symbol);
-		(this.parent as ImportStatement).hasSymbols = true;
 	}
 
   /**
@@ -187,6 +186,7 @@ class ImportSymbols extends Scanable {
 export class ImportStatement extends Scanable {
 	private _universalPathModuleSpecifier: string = '';
 	private _moduleSpecifierJuggler = new as.ModuleSpecifierJuggler('');
+  private _hasSymbols:boolean = false;
 
   public isUnderstood:boolean = false;
 	public startLocation = new vs.Location;
@@ -194,7 +194,6 @@ export class ImportStatement extends Scanable {
 
   public indentCharacters: string = '';
 
-	public hasSymbols:boolean = false;
 	public hasType:boolean = false;
 
   public useModuleSpecifierExt: boolean = false;
@@ -209,6 +208,15 @@ export class ImportStatement extends Scanable {
   public commasHaveSpaces: boolean = false;
 
 	public cursorPosAfterAsText:number = 0;
+
+  /** if set to true without any symbols, it means that the import has an empty set of symbols: `import { } from ...`*/
+	public get hasSymbols():boolean {
+    return this._hasSymbols || this.symbols.items.length > 0;
+  }
+	public set hasSymbols(value:boolean) {
+    this._hasSymbols = value;
+  }
+
 
   /**
 	 * this is only set after a {@link scan}. It is a side effect of converting the scanned inport's module specifier to a universalPathModuleSpecifier
@@ -317,7 +325,7 @@ export class ImportStatement extends Scanable {
 
 
   /**
-	 * two import statements are said to have the same type if one can be assigned and/or merged with the other.
+	 * one import statement can be merged into another if they each are of the right types.
 	 * - obvious case:
 	 *   - `import * as ss from 'system'`  is the same type as `import * as sys from 'system'`
 	 *   - in the above example, you can overwrite one "all-alias" with the other (i.e `ss` with `sys` in the example)
@@ -326,33 +334,79 @@ export class ImportStatement extends Scanable {
 	 *   - `import sys from 'system'` is the same type as `import {files, folders} from 'system'`
 	 *   - the above examples are the same type because you can merge them to form `import sys, {files, folders} from 'system'`
 	 *
-	 * - not the same:
-	 *   - `import sys from 'system'` is not the same type as `import * as sys from 'system'`
-	 *   - the above examples are not same type because changing one to the other is likely to break the import atatement
+	 * - no so obvious case:
+	 *   - `import sys from 'system'` can overwrite `import * as sys from 'system'`
+	 *   - this is because if you are importing the module with an all alias, it's unlikely that you would be importing a default export and an all alias at the same time
+   *
+   * - can not overwite:
+   *   - `import { symbol } from 'system'` cannot be added to `import * as sys from 'system'`
 	 */
-  public isSameTypeAs(otherImportStatement:ImportStatement)  {
-    // basic check, if either statement could not be understood by the parser, we can't say they are the same type
+  public isMergable(sourceImportStatement:ImportStatement, mergeError:{message:string}):boolean  {
+    mergeError.message = '';
+
+    // basic check, if either statement could not be understood by the parser, we can't say they are mergable
 		if (!
 			(
 				this.isUnderstood == true &&
-				otherImportStatement.isUnderstood == true
+				sourceImportStatement.isUnderstood == true
 			)
     )
 		  return false;
 
-    // non compound types
-    if (
-			this.isModuleOnly == otherImportStatement.isModuleOnly &&
-			this.hasAllAlias == otherImportStatement.hasAllAlias
-		)
-		  return true;
+    // if this has an all alias
+    if (sourceImportStatement.importKind == ImportKind.allAlias) {
+      if (this.importKind == ImportKind.allAlias) {
+        if (this.alias == sourceImportStatement.alias)
+          return true;
+        else {
+          mergeError.message = 'an import statement for this module already exists with the alias: '+this.alias;
+          return false;
+        }
+      } else if (this.importKind == ImportKind.defaultAlias) {
+        if (this.hasSymbols) {
+          mergeError.message = 'an import statement for this module already exists with the default alias: '+this.alias;
+          return false;
+        } else if (this.alias != sourceImportStatement.alias) {
+          mergeError.message = 'an import statement for this module already exists with the default alias: '+this.alias;
+          return false;
+        } else
+          return true; // <-- as long as the default alias doesn't have symbols, allow it to be changed to an all alias
+      } else if (this.hasSymbols) {
+        return false; // <-- simply skip this import, it's not mergable
+      } else
+        return true;
 
-    // compound types
-		return (
-		  this.hasType == otherImportStatement.hasType &&
-			(this.hasSymbols || this.hasDefaultAlias) &&
-			(otherImportStatement.hasSymbols || otherImportStatement.hasDefaultAlias)
-		);
+    } else if (sourceImportStatement.importKind == ImportKind.defaultAlias) {
+      if (this.importKind == ImportKind.allAlias) {
+        if (this.alias == sourceImportStatement.alias)
+          return true;
+        else {
+          mergeError.message = 'an import statement for this module already exists with the alias: '+this.alias;
+          return false;
+        }
+      } else if ( this.importKind == ImportKind.defaultAlias) {
+        if (this.alias != sourceImportStatement.alias) {
+          mergeError.message = 'an import statement for this module already exists with the default alias: '+this.alias;
+          return false;
+        } else
+          return true;
+      } else
+         return true;
+
+    } else if (sourceImportStatement.hasSymbols) {
+      if (this.importKind == ImportKind.allAlias) {
+        return false;
+      } else
+        return true;
+
+    } else { // the source must be a moduleOnly import kind
+      if (this.importKind != ImportKind.moduleOnly) {
+        mergeError.message = 'an import for this module already exists';
+        return false;
+      } else
+        return true;
+    }
+
 	}
 
   /**
@@ -468,7 +522,6 @@ export class ImportStatement extends Scanable {
 		if (this.token.nextChar() == ' ')
   	  this.bracesHavePadding = true;
 		if (this.symbols.scan()) {
-			this.hasSymbols = true;
 			this.commasHaveSpaces = this.symbols.commasHaveSpaces;
 			this.token.getNext();
 			return this.scanModule();

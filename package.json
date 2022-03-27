@@ -3,7 +3,7 @@
 	"publisher": "bf-s",
 	"displayName": "Import Helper",
 	"description": "quickly import modules, aliases, and symbols via a search (for typescript, javascript, and svelte)",
-	"version": "1.0.0",
+	"version": "1.1.0",
 	"icon": "out-bundle/images/BF-Software/icon.png",
 	"engines": {
 		"vscode": "^1.64.0"
@@ -110,10 +110,9 @@
 	"scripts": {
 		"dev-build": "webpack --config ./webpack.config.mjs | less -f -r",
 		"dev-watch": "webpack --config ./webpack.config.mjs --watch",
-		"prod-build": "cross-env NODE_ENV=production webpack --config ./webpack.config.mjs",
+		"prod-build-deploy": "cross-env NODE_ENV=production webpack --config ./webpack.config.mjs && mkdirp ./deploy && vsce package --no-dependencies --out ./deploy",
 		"prod-map-explorer-list": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map --tsv",
-		"prod-map-explorer-html": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map",
-		"prod-vsce-deploy": "mkdirp ./deploy && vsce package --no-dependencies --out ./deploy"
+		"prod-map-explorer-html": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map"
 	},
 	"scripts-comments": {
 		"dev-build": "a non-watching build for developing. only used when a lot of errors are found and I need to peruse them slowly",

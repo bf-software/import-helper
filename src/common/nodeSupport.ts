@@ -290,13 +290,29 @@ export async function getFirstFile(files:string[]):Promise<string> {
 export async function readFile(file:string):Promise<Uint8Array> {
   return fsp.readFile(file);
 }
+export function readFileSync(file:string):Uint8Array {
+  return fs.readFileSync(file);
+}
 
-export async function fileToString(file:string):Promise<string> {
+export async function readStringFromFile(file:string):Promise<string> {
   return (await fsp.readFile(file, {encoding: 'utf8'}));
+}
+export function readStringFromFileSync(file:string):string {
+  return fs.readFileSync(file, {encoding: 'utf8'}) ?? '';
 }
 
 export async function writeFile(file:string, buffer:Uint8Array):Promise<void> {
   return fsp.writeFile(file, buffer, {encoding:'binary'});
+}
+export function writeFileSync(file:string, buffer:Uint8Array) {
+  fs.writeFileSync(file, buffer, {encoding:'binary'});
+}
+
+export async function writeStringToFile(file:string, s:string):Promise<void> {
+  return fsp.writeFile(file, s, {encoding:'utf8'});
+}
+export function writeStringToFileSync(file:string, s:string) {
+  fs.writeFileSync(file, s, {encoding: 'utf8'});
 }
 
 export async function readFileBytes(file:string, byteCount:number):Promise<Uint8Array> {
@@ -307,9 +323,9 @@ export async function readFileBytes(file:string, byteCount:number):Promise<Uint8
   return Buffer.concat(chunks);
 }
 
-export function readFileSync(file:string):Uint8Array {
-  return fs.readFileSync(file);
-}
+
+
+
 
 
 /**

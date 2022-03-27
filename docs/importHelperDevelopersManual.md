@@ -174,11 +174,21 @@ Modules offered by the node_modules folder are pulled in by leveraging vscode's 
 
 !!! However, there is a problem with caching node modules, and that is: the user may activate Import Helper very early in the vscode loading process.  If that happens, vscode only returns a partial list of node_modules available.  A subsequent run will return more.  Until we can be sure that we are getting all modules, we can't cache them.  Luckily, getting the list of node modules is quite fast anyway.
 
+# how to deploy
 
+  1. run the prod-build script
+  2. run the prod-map-explorer-list (just to make sure that webpack only included the desired libraries)
+  3. run the tests from the debug area
+  4. run prod-vsce-deploy
+  5. install and distribute "./deploy/inport-helper-x.x.x.vsix"
 
 # To Do
 
 ## (easy items)
+
+### symbol groups
+
+group symbols in step 2 by symbol type, and add the ability to filter types by starting a search term with a /
 
 ### paths
 

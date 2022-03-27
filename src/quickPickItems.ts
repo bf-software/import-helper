@@ -283,10 +283,10 @@ export class SymbolQuickPickItem extends ProjectModuleQuickPickItem {
 	) {
 	  super(module,projectModule);
 		this.importStatement.universalPathModuleSpecifier = this.projectModule.universalPathModuleSpecifier;
-		this.importStatement.symbols.add(this.exportSymbol?.name, this.exportSymbol?.alias);
-		this.directReferenceCount = this.exportSymbol?.referenceCount;
-		this.sortGroup = '';
-		this.sortText = this.exportSymbol?.name.toLowerCase();
+		this.importStatement.symbols.add(this.exportSymbol!.name, this.exportSymbol!.alias);
+		this.directReferenceCount = this.exportSymbol!.referenceCount;
+		this.sortGroup = this.exportSymbol!.type;
+		this.sortText = this.exportSymbol!.name.toLowerCase();
 	}
 
 	public render() {
@@ -322,4 +322,3 @@ export function addModuleSearchSeparators(moduleSearchQuickPickItems: ModuleSear
     item = moduleSearchQuickPickItems[i] as (ProjectModuleQuickPickItem|undefined); // <-- item will never be a SeparatorItems
   }
 }
-

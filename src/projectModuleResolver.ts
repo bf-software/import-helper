@@ -230,7 +230,7 @@ export class ProjectModuleResolver {
 
 
   private async addPrecheckFilesFromPackageJson(packageJsonFile:string, precheckModuleSpecifier:string) {
-    let json = ( await ns.fileToString(packageJsonFile) );
+    let json = ( await ns.readStringFromFile(packageJsonFile) );
     let packagePath = ss.extractPath(packageJsonFile);
     let packageObject = JSON.parse(json);
     // todo: use exports to see if there are any that match the precheckModuleSpecifier
@@ -242,7 +242,7 @@ export class ProjectModuleResolver {
    * the main entry points into the package.
    */
   private async addFilesFromPackageJson(packageJsonFile:string) {
-    let json = await ns.fileToString(packageJsonFile);
+    let json = await ns.readStringFromFile(packageJsonFile);
     let packagePath = ss.extractPath(packageJsonFile);
     let packageObject = JSON.parse(json);
 

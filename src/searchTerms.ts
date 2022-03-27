@@ -197,21 +197,37 @@ export class ModuleSearchTerms extends cs.FfArray<ModuleSearchTerm> {
 }
 
 
-
+/** (s)ymbol (t)erm (t)ype */
+export enum STT {
+  symbolName, symbolType
+};
 
 export class SymbolSearchTerm {
 	constructor(
 	  public lowercaseText: string,
+    public type: STT,
 		public isExact: boolean
 	) {}
 }
 
-export class SymbolSearchTerms extends Array<SymbolSearchTerm> {
+export class SymbolSearchTerms extends cs.FfArray<SymbolSearchTerm> {
   public lastSearchText:string = '';
   constructor(
 	) {
 	  super();
 	}
+
+  public hasType(type:STT):boolean {
+	  return Boolean(this.byFunc( (item) => item.type == type ) );
+	}
+
+  public typeCount(type: STT) {
+    let ct = 0;
+    for (let term of this)
+      if (term.type == type)
+        ct++;
+    return ct;
+  }
 
 	public clear() {
 		this.length = 0;
@@ -222,12 +238,18 @@ export class SymbolSearchTerms extends Array<SymbolSearchTerm> {
 		searchText = searchText.trim();
 		searchText = searchText.replace('{','');
     searchText = searchText.replace('*','');
+    searchText = searchText.replaceAll('/',' /');
 		this.clear();
 		this.lastSearchText = searchText;
 		searchText.split(' ').forEach( termString => {
 			termString = termString.toLowerCase().trim();
 			if (termString == '')
 				return;
+      let type = STT.symbolName;
+      if (termString.startsWith('/')) {
+			  type = STT.symbolType;
+			  termString = termString.substr(1);
+      }
 			let isExact = false;
 			if (termString.startsWith('"')) {
 			  termString = ss.trimChars(termString,['"']);
@@ -235,29 +257,43 @@ export class SymbolSearchTerms extends Array<SymbolSearchTerm> {
 			}
 			this.push(new SymbolSearchTerm(
 				termString,
+        type,
 				isExact
 			));
 		});
 	}
 
-	public termsMatch(symbolName:string, symbolAlias:string) {
-	  let lowerCaseSymbolName = symbolName.toLowerCase();
+	public termsMatch(symbolName:string, symbolAlias:string, symbolType:string) {
+	  let lowercaseSymbolName = symbolName.toLowerCase();
 		let lowercaseSymbolAlias = symbolAlias.toLowerCase();
+    let lowercaseSymbolType = symbolType.toLocaleLowerCase();
 		if (this.length == 0) // <-- unlike in step 1's search (searchModule()), we don't need an asterisk to show all, showing all is the default
 		  return true;
 		for (let term of this) {
-			if (term.isExact) {
-				if (lowerCaseSymbolName != term.lowercaseText && lowercaseSymbolAlias != term.lowercaseText)
-					return false;
-  		} else if (this.length == 1 && term.lowercaseText.length == 1) {
-				if (! lowerCaseSymbolName.startsWith(term.lowercaseText) && ! lowercaseSymbolAlias.startsWith(term.lowercaseText))
-					return false;
-			} else {
-				if (lowerCaseSymbolName.indexOf(term.lowercaseText) == -1 && lowercaseSymbolAlias.indexOf(term.lowercaseText) == -1)
-				  return false;
-			}
+      if (term.type == STT.symbolType) {
+        if (term.isExact) {
+          if (lowercaseSymbolType != term.lowercaseText)
+            return false;
+        } else if (term.lowercaseText.length == 1) {
+          if (! lowercaseSymbolType.startsWith(term.lowercaseText))
+            return false;
+        } else {
+          if (! lowercaseSymbolType.includes(term.lowercaseText))
+            return false;
+        }
+      } else {
+        if (term.isExact) {
+          if (lowercaseSymbolName != term.lowercaseText && lowercaseSymbolAlias != term.lowercaseText)
+            return false;
+        } else if (this.typeCount(STT.symbolName) == 1 && term.lowercaseText.length == 1) {
+          if (! lowercaseSymbolName.startsWith(term.lowercaseText) && ! lowercaseSymbolAlias.startsWith(term.lowercaseText))
+            return false;
+        } else {
+          if (! lowercaseSymbolName.includes(term.lowercaseText) && ! lowercaseSymbolAlias.includes(term.lowercaseText))
+            return false;
+        }
+      }
 	  }
 		return true;
 	}
 }
-

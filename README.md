@@ -26,7 +26,7 @@ While you are editing your code, press `Alt+F11 (⌥F11)`, type a few characters
 
 Next, in 'step 2', type a few characters to locate a symbol you would like to import. Then press enter.
 
-The search edit accepts multiple terms separated by a spaces.
+The search edit accepts multiple terms separated by a spaces.  Precede a search term with a / to search for types. Ex. type "write /func" to show all functions that contain "write".
 
 Tips:
 When entering characters in the search edit, you don't have to start with the first characters of the module name, you can enter characters that may appear anywhere within the module name.  For large projects, starting with the first characters of a module name can actually be unproductive. See the following example:
@@ -154,6 +154,17 @@ show a list of modules that use the selected module
 shows modules that are not referenced by your project code
 
 ## Release Notes
+
+### v1.1.0 - (Mar 27, 2022)
+
+new features:
+* symbol search:
+  - symbols are now initially grouped by type
+  - added ability to search for symbol types by preceding the search term with a /
+  - added toolbar buttons to filter for common symbol types
+
+fixed issues:
+* could not import a symbol when a default alias import already existed in the importing module.
 
 ### v1.0.0 - (Mar 12, 2022)
 

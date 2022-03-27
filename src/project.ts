@@ -202,7 +202,7 @@ export class Project {
 
   public async init() {
     if (this.packageJsonFile != '') {
-      let packageJson = ( await ns.fileToString(this.packageJsonFile) );
+      let packageJson = ( await ns.readStringFromFile(this.packageJsonFile) );
       let packageObject = JSON.parse(packageJson);
       if (typeof packageObject.dependencies == 'object')
         for (let dependency in packageObject.dependencies) {
@@ -237,7 +237,7 @@ export class Project {
   public getModuleRootDirs(importingModuleFile: string):string[] {
     let result:string[] = [];
     let importingModulePath = ss.extractPath(importingModuleFile);
-    if (this.config) {
+    if (this.config && this.config.rootDirs.length) {
       for (let rootDir of this.config.rootDirs) {
         if (ss.sameText(rootDir,importingModulePath))
         result.push(rootDir)
@@ -257,7 +257,7 @@ export class Project {
     for (let nodeModulesPath of this.nodeModulesPaths) {
       let packageJsonFile = nodeModulesPath + packageName + '/package.json';
       if (await ns.fileExists(packageJsonFile)) {
-        let json = await ns.fileToString(packageJsonFile);
+        let json = await ns.readStringFromFile(packageJsonFile);
         return JSON.parse(json);
       }
     }
@@ -710,6 +710,3 @@ export class Projects extends cs.FfSortedMap<string,Project> {
 }
 
 export let projects = new Projects();
-
-
-

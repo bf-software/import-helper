@@ -22,7 +22,6 @@ interface ProjectFileQuickPickItem {
 export class ImportHelperUi {
   private api = new ImportHelperApi();
   private moduleQuickPick: PlainQuickPick<qpi.ProjectModuleQuickPickItem|qpi.SeparatorItem> | undefined;
-  private moduleQuickPickItemButtons: vscode.QuickInputButton[] = [];
   private symbolQuickPick: PlainQuickPick<qpi.ProjectModuleQuickPickItem|qpi.SeparatorItem> | undefined;
   private openModuleKey: string = '';
   private showReferencesKey: string = '';
@@ -217,7 +216,7 @@ export class ImportHelperUi {
         this.changedModuleValue();
       })
 
-      this.moduleQuickPick.buttons = this.getToolbarButtons(mode);
+      this.moduleQuickPick.buttons = this.getModuleSearchToolbarButtons();
 
       this.changedModuleValue();
 
@@ -234,7 +233,7 @@ export class ImportHelperUi {
 
   }
 
-  public getToolbarButtons(mode: IHMode):PlainQuickPickButtons {
+  public getModuleSearchToolbarButtons():PlainQuickPickButtons {
     let buttons = new PlainQuickPickButtons();
     buttons.iconPath = globals.extensionEntryPointPath + 'images/Microsoft/';
     buttons.add('show all (*)', 'showAll.svg', () => {
@@ -254,6 +253,37 @@ export class ImportHelperUi {
       this.disposeAllQuickPicks();
     });
     return buttons;
+  }
+
+  public getSymbolSearchToolbarButtons():PlainQuickPickButtons {
+    let buttons = new PlainQuickPickButtons();
+    buttons.iconPath = globals.extensionEntryPointPath + 'images/Microsoft/';
+    buttons.add('interfaces', 'interface--codicon-symbol-interface.svg', () => {
+      this.symbolQuickPick!.value = '/interface ';
+      this.changedSymbolValue();
+    });
+    buttons.add('classes', 'class--codicon-symbol-class.svg', () => {
+      this.symbolQuickPick!.value = '/class ';
+      this.changedSymbolValue();
+    });
+    buttons.add('functions', 'function--codicon-symbol-method.svg', () => {
+      this.symbolQuickPick!.value = '/function ';
+      this.changedSymbolValue();
+    });
+    // buttons.add('constants', 'constant--codicon-symbol-constant.svg', () => {
+    //   this.symbolQuickPick!.value = '/constant ';
+    //   this.changedSymbolValue();
+    // });
+    buttons.add('variables/constants', 'variable--codicon-symbol-variable.svg', () => {
+      this.symbolQuickPick!.value = '/variable ';
+      this.changedSymbolValue();
+    });
+    buttons.add('enums', 'enum--codicon-symbol-enum.svg', () => {
+      this.symbolQuickPick!.value = '/enum ';
+      this.changedSymbolValue();
+    });
+    return buttons;
+
   }
 
   public getItemButtons(mode: IHMode):PlainQuickPickButtons {
@@ -332,6 +362,8 @@ export class ImportHelperUi {
           resolve(selection[0] as qpi.ProjectModuleQuickPickItem);
       })
 
+      this.symbolQuickPick.buttons = this.getSymbolSearchToolbarButtons();
+
       this.symbolQuickPick.step = 2;
       this.symbolQuickPick.title = 'Select Symbol in '+ (this.api.step1QPItem as qpi.SourceModuleImportQuickPickItem).projectModule.shortenedModuleName + ' - ' + cAppName;
       this.symbolQuickPick.placeholder = 'Search for symbols. Use space to separate terms. Go to bottom for full import statements.';
@@ -380,6 +412,3 @@ export class ImportHelperUi {
 
 
 }
-
-
-

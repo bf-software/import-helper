@@ -1,4 +1,4 @@
-import * as ts from 'typescript';
+import ts from 'typescript';
 import { SyntaxKind as TK } from 'typescript';
 import * as vs from './common/vscodeSupport';
 import * as ss from './common/systemSupport';

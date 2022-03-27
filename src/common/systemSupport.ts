@@ -432,6 +432,10 @@ export function numberToString(num:number | bigint):string {
 }
 
 
+export function round(n:number,decimalPlaces:number):number {
+  return Math.round(n*(decimalPlaces*10))/(decimalPlaces*10);
+}
+
 
 /**
 * counts the number of lines that would be visible if the string was pasted into an editor
@@ -1019,13 +1023,13 @@ export function urlParamsToObject(url:string) {
  * takes an Iterable and executes a callback on each element.  The callback should either return a new value to represent the
  * element or undefined/null to ignore this value thereby reducing the count of the result array.
  */
-export function transform<T>(iterable:Iterable<any>, callback:(value:any, key: any, index: number)  => T|undefined ): T[] {
-  let result:any[] = [];
+export function transform<ItemType,ResultType>(iterable:Iterable<ItemType>, callback:(item:ItemType, index?: number)  => ResultType|void ): ResultType[] {
+  let result:ResultType[] = [];
   let index:number = 0;
-  for (let [key,value] of iterable) {
-		let item = callback(value, key, index++);
-		if ( typeof item != 'undefined' && item != null )
-      result.push(item);
+  for (let oldItem of iterable) {
+    let newItem = callback(oldItem, index++);
+    if ( typeof newItem != 'undefined' && newItem != null )
+      result.push(newItem);
   }
 	return result;
 }
@@ -1893,4 +1897,20 @@ export function rawTextDateToLocalMidnight(rawTextDate: string):Date {
   if (!rawTextDate.match(/^\d\d\d\d-[01]\d-[0-3]\d$/) )
     throw new Error('rawTextDateToLocalMidnight(): rawTextDate must be in the form YYYY-MM-DD');
   return new Date(rawTextDate+'T00:00:00.000');
+}
+
+export function ifNaN(testNumber: number, defaultNumber: number): number {
+  return isNaN(testNumber) ? defaultNumber : testNumber;
+}
+
+export function noHigherThan(testNumber: number, maxNumber: number): number {
+  return Math.min(testNumber,maxNumber);
+}
+
+export function noLowerThan(testNumber: number, minNumber: number): number {
+  return Math.max(testNumber,minNumber);
+}
+
+export function fitRange(testNumber: number, minNumber: number, maxNumber: number): number {
+  return noLowerThan(noHigherThan(testNumber,maxNumber),minNumber);
 }

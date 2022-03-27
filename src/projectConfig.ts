@@ -1,6 +1,6 @@
 import * as ss from './common/systemSupport';
 import * as vs from './common/vscodeSupport';
-import * as ts from 'typescript';
+import ts from 'typescript';
 import * as path from 'path';
 import { Project, projects } from './project';
 import * as cs from './common/collectionSupport';

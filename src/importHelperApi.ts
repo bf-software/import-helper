@@ -39,7 +39,7 @@ import { QuickViewPanel } from './quickViewPanel';
 import * as cs from './common/collectionSupport';
 import * as qpi from './quickPickItems';
 import { ModuleSymbol, ModuleSymbols } from './moduleSymbol';
-import { ModuleSearchTerms, SymbolSearchTerms, MTT } from './searchTerms';
+import { ModuleSearchTerms, SymbolSearchTerms, MTT, STT } from './searchTerms';
 import { PlainQuickPickItem } from './plainQuickPick';
 import { ProjectModuleResolver, ProjectFileMap } from './projectModuleResolver';
 import { EditorSearchSymbol } from './document';
@@ -352,24 +352,32 @@ export class ImportHelperApi {
 
     let recommended = this.recommendedSourceModuleImportsforSymbolSearch(symbolSearchTerms);
     if (recommended.length > 0) {
-      this.symbolSearchQuickPickItems.push(new qpi.SeparatorItem(`full import${ss.spHide(recommended.length,'','s')} already used`));
+      this.symbolSearchQuickPickItems.push(new qpi.SeparatorItem(`full import${ss.spHide(recommended.length,'','s')} used elsewhere`));
       this.symbolSearchQuickPickItems.push(...recommended);
     }
 
     let symbols = this.searchSymbolsForSymbolSearch(symbolSearchTerms)
     if (symbols.length > 0) {
       this.symbolSearchQuickPickItems.push(new qpi.SeparatorItem(`importable symbol${ss.spHide(symbols.length,'','s')}`));
+
+      // symbols start out as an alpha sort on name
+      // normalSort() groups by symbol type -- which we'll only do when all symbols are shown
+      if (symbolSearchTerms.length == 0)
+        qpi.normalSort(symbols);
+
       this.symbolSearchQuickPickItems.push(...symbols);
     }
 
-    if (
+    if (symbolSearchTerms.length >= 2 || symbolSearchTerms.hasType(STT.symbolType)) {
+      // the search terms are such that it doesn't make sense to offer full imports
+    } else if (
       this.step1QPItem! instanceof qpi.SourceModuleQuickPickItem &&
       (!this.step1QPItem.projectModule.isCode || this.step1QPItem.projectModule.isSvelte) &&
       recommended.length >= 1 &&
       this.recommendedHasMainIdentifier(recommended,as.deriveModuleNameAlias(this.step1QPItem.importStatement.shortenedModuleName))
     ) {
-      // this is a non-code or a svelte file, so only recommend the generic full imports if the already used full imports
-      // that were used are different.
+      // this is non-code or a svelte module, so it would normally only recommend the generic full imports,
+      // but in this case, the full imports were already recommended at the top, so we won't offer them again at the bottom.
     } else {
       recommended = this.recommendedModuleImportsForSymbolSearch(symbolSearchTerms)
       if (recommended.length > 0) {
@@ -397,26 +405,36 @@ export class ImportHelperApi {
     // check for existing statements
 		let existingStatement:ImportStatement | undefined;
 		for (let statement of module!.importStatements) {
-			if (statement.isSameModuleAs(selectedQPI.importStatement) && statement.isSameTypeAs(selectedQPI.importStatement)){
-        existingStatement = statement;
-				break;
+			if (statement.isSameModuleAs(selectedQPI.importStatement)) {
+        let mergeError = {message:''};
+        let isMergable = statement.isMergable(selectedQPI.importStatement,mergeError);
+        if (mergeError.message) {
+          this.addStatementWarning = mergeError.message;
+          return;
+        }
+        if (isMergable) {
+          existingStatement = statement;
+				  break;
+        }
 			}
 		}
 
 		if (existingStatement) {
 
-      existingStatement.symbols.append(selectedQPI.importStatement.symbols);
-  		if (existingStatement.symbols.appendWarning)
-			  this.addStatementWarning = existingStatement.symbols.appendWarning;
-
-      if (selectedQPI.importStatement.hasDefaultAlias && !existingStatement.hasDefaultAlias) {
-				existingStatement.importKind = ImportKind.defaultAlias;
-			  existingStatement.alias = selectedQPI.importStatement.defaultAlias;
-			}
-
-      if (existingStatement.alias != selectedQPI.importStatement.alias) {
-        this.addStatementWarning = 'a statement for this module already exists with a different alias';
+      // copy the symbols into the existing statement
+      if (selectedQPI.importStatement.hasSymbols) {
+        existingStatement.bracesHavePadding = selectedQPI.importStatement.bracesHavePadding;
+        existingStatement.commasHaveSpaces = selectedQPI.importStatement.commasHaveSpaces;
+        existingStatement.symbols.append(selectedQPI.importStatement.symbols);
+  		  if (existingStatement.symbols.appendWarning)
+  			  this.addStatementWarning = existingStatement.symbols.appendWarning;
       }
+
+      // copy the alias into the existing statement
+      if (selectedQPI.importStatement.hasAlias) {
+				existingStatement.importKind = selectedQPI.importStatement.importKind;
+			  existingStatement.alias = selectedQPI.importStatement.alias;
+			}
 
   		await docs.active.insertText(existingStatement.startLocation.position, existingStatement.asText(), existingStatement.endLocation.position+1);
 		  docs.active.rememberPos(cLastImportPos, existingStatement.startLocation.position + existingStatement.cursorPosAfterAsText);
@@ -464,7 +482,7 @@ export class ImportHelperApi {
 	}
 
 	private searchSourceModulesForModuleSearch(moduleSearchTerms:ModuleSearchTerms):qpi.SourceModuleQuickPickItem[] {
-    let items = ss.transform<qpi.SourceModuleQuickPickItem>(docs.active!.project!.sourceModules, (sourceModule:SourceModule) => {
+    let items = ss.transform<[string,SourceModule],qpi.SourceModuleQuickPickItem>(docs.active!.project!.sourceModules, ([key,sourceModule]) => {
 		  let path = ss.extractPath(sourceModule.universalPathShortenedModuleSpecifier);
 			if (moduleSearchTerms.termsMatch(sourceModule.moduleName, path)) {
 				let sourceModuleQuickPickItem = new qpi.SourceModuleQuickPickItem(docs.active!.module!, sourceModule);
@@ -478,7 +496,7 @@ export class ImportHelperApi {
 	 * if the user starts typing "/node_modules", this is set to return all of the node modules we know about
 	 */
 	private searchNodeModulesForModuleSearch(moduleSearchTerms:ModuleSearchTerms):qpi.NodeModuleQuickPickItem[] {
-		let items = ss.transform<qpi.NodeModuleQuickPickItem>(this.currentFileNodeModules, (nodeModule:NodeModule, key) => {
+		let items = ss.transform<[string,NodeModule],qpi.NodeModuleQuickPickItem>(this.currentFileNodeModules, ([key,nodeModule]) => {
 			let path = 'node_modules/' + nodeModule.universalPathModuleSpecifier;
 			if (moduleSearchTerms.termsMatch(nodeModule.universalPathModuleSpecifier, path)) {
 				let nodeModuleQuickPickItem = new qpi.NodeModuleQuickPickItem(docs.active!.module!, nodeModule);
@@ -502,7 +520,7 @@ export class ImportHelperApi {
 	}
 
 	private searchSourceModuleImportsForModuleSearch(moduleSearchTerms:ModuleSearchTerms):qpi.SourceModuleImportQuickPickItem[] {
-		let items = ss.transform<qpi.SourceModuleImportQuickPickItem>(docs.active!.project!.sourceModuleImports, (sourceModuleImport:SourceModuleImport) => {
+		let items = ss.transform<[string,SourceModuleImport],qpi.SourceModuleImportQuickPickItem>(docs.active!.project!.sourceModuleImports, ([key, sourceModuleImport]) => {
 		  let path = ss.extractPath(sourceModuleImport.universalPathShortenedModuleSpecifier);
 			if (moduleSearchTerms.termsMatch(sourceModuleImport.aliasOrShortenedModuleName, path)) {
  			  let item = new qpi.SourceModuleImportQuickPickItem(docs.active!.module!, sourceModuleImport);
@@ -513,7 +531,7 @@ export class ImportHelperApi {
 	};
 
 	private searchSourceSymbolImportsForModuleSearch(moduleSearchTerms:ModuleSearchTerms):qpi.SourceSymbolImportQuickPickItem[] {
-		let items = ss.transform<qpi.SourceSymbolImportQuickPickItem>(docs.active!.project!.sourceSymbolImports, (sourceSymbolImport:SourceSymbolImport) => {
+		let items = ss.transform<[string,SourceSymbolImport],qpi.SourceSymbolImportQuickPickItem>(docs.active!.project!.sourceSymbolImports, ([key,sourceSymbolImport]) => {
 			let path = ss.extractPath(sourceSymbolImport.universalPathShortenedModuleSpecifier);
       if ( moduleSearchTerms.termsMatch(sourceSymbolImport.shortenedModuleName, path, sourceSymbolImport.name, sourceSymbolImport.alias ) ) {
  			  let importQuickPickItem = new qpi.SourceSymbolImportQuickPickItem(docs.active!.module!, sourceSymbolImport);
@@ -549,13 +567,11 @@ export class ImportHelperApi {
 		  return items;
 
 		for (let exportSymbol of this.exportSymbols) {
-			if (symbolSearchTerms.termsMatch(exportSymbol.name, exportSymbol.alias)) {
+			if (symbolSearchTerms.termsMatch(exportSymbol.name, exportSymbol.alias, exportSymbol.type)) {
   		  let symbolQPI = new qpi.SymbolQuickPickItem(docs.active!.module!, this.step1QPItem!.projectModule, exportSymbol);
 			  items.push(symbolQPI);
  	    }
 		}
-
-    qpi.normalSort(items);
 		return items;
 	}
 
@@ -606,7 +622,6 @@ export class ImportHelperApi {
 			// add an option for a completely manual symbol based on the search text
       if (isCodeOrNode && !isSvelte) {
         item = new qpi.SourceModuleImportQuickPickItem(docs.active!.module!, tempSourceModuleImport);
-        item.importStatement.hasSymbols = true;
         let importSymbol = new ImportSymbol();
         importSymbol.name = symbolSearchTerms.lastSearchText;
         item.importStatement.symbols.items.push(importSymbol);
