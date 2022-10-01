@@ -54,16 +54,16 @@ By default, the search only looks at modules names, module aliases, and symbols,
 
 *Exact matches* - In any type of search, beginning your search text with a double quote means that the text should be an exact match.  For example, if you search for `"fs` you will only get `fs` and not `fspromises` or `pfs`.  Double quotes will also work for symbols and paths like so: `{"uri`, or `/"common`.  In the case of a path, the search looks for an exact match of the a single folder name within the path.  For example `/"common` finds `/proj/common/data`, but not `/proj/commonTools/data`.
 
-File extensions are not included in module name searches.  For example, if you are looking for `mainForm.css` typing `main css` will not find the css file.  To search for extensions, include a dot in the search.  Use `main.css` or `main .css` to find `mainForm.css`.
+File extensions are not included in module name searches.  For example, if you are looking for `mainForm.css` typing `main css` will not find the css file.  To search for extensions, include a dot in the search.  Use `main .css` to find `mainForm.css`.
 
 Missing node_modules? - If you open Import Helper while the active editor tab in vscode is not a Javascript, Typescript, or Svelte file, the modules list will
 be missing all of the node_modules your project would normally have access to.  This can't be helped because of the way Import Helper gathers the node_modules to show.  Simply reopen Import Helper while editing a code file to avoid this.
 
-When invoking `Add Import`, the most recently typed in symbol/identifier to the left of the cursor will become the default text for the module search.  If there isn't any symbol, the text of the most recent search is used.  If a partial symbol, symbol alias, module, or modual alias was found to the left of the cursor, selecting a matching symbol, symbol alias, module, or modual alias will complete the text in the editor.
+When invoking `Add Import`, the most recently typed in symbol/identifier to the left of the cursor will become the default text for the module search.  If there isn't any symbol, the text of the most recent search is used.  If a partial symbol, symbol alias, module, or module alias was found to the left of the cursor, selecting a matching symbol, symbol alias, module, or module alias will complete the text in the editor.
 
 ### Open Module ┊ `Alt+O (⌥O on Mac)`
 
-Opens the highlighted module in the editor. This is often a more direct route to the module's code than using vscode's `GoTo File... (Ctrl+P | ⌘P)` command, which can include many other files besides source modules.  Another benefit of opening modules this way is that you can find modules by their aliases or by the symbols your project uses.  Activating this command in Step 1 of `Add Import (Alt+F11 | ⌥I)` will open the selected module instead of importing it. This command can also be started directly from the editor, in which case it will open Import Helper in "Open Module" mode.  Then selecting a module using the enter key will immediately open it instead of importing it.
+Opens the highlighted module in the editor. This is often a more direct route to the module's code than using vscode's `GoTo File... (Ctrl+P | ⌘P)` command, which can include many other files besides source modules.  Another benefit of opening modules this way is that you can find modules by their aliases or by the symbols your project uses.  Activating this command in Step 1 of `Add Import (Alt+F11 | ⌥F11)` will open the selected module instead of importing it. This command can also be started directly from the editor, in which case it will open Import Helper in "Open Module" mode.  Then selecting a module using the enter key will immediately open it instead of importing it.
 
 If a module is represented by multiple code files, Import Helper will ask to choose one of the files to open. For example, a module may have both a .d.ts and a .js file available.
 
@@ -155,6 +155,14 @@ shows modules that are not referenced by your project code
 
 ## Release Notes
 
+### v1.1.1 - (Oct 1, 2022)
+
+fixed issues:
+* when modules were created by a transpiler, Import Helper detected the new/updated files and inadvertently included them in its internal list of modules even if their folder was supposed to be excluded by the `Paths: exclude` setting.
+* when importing a symbol or module and it's identifier was under the cursor in the editor, it would sometimes be replaced/completed incorrectly.
+* when importing svelte modules, the recommended default alias will now always start with an uppercase letter, even if the module name is lower case.
+
+
 ### v1.1.0 - (Mar 27, 2022)
 
 new features:
@@ -166,10 +174,12 @@ new features:
 fixed issues:
 * could not import a symbol when a default alias import already existed in the importing module.
 
+
 ### v1.0.0 - (Mar 12, 2022)
 
 * documentation updates
 * tiny fixes
+
 
 ### v0.9.0 - (Feb 18, 2022)
 
@@ -182,6 +192,7 @@ new features:
 
 fixed issues:
 * if upon using IH for the first time after opening a project, you tried to add an import statement that already existed, it would duplicate it in your code
+
 
 ### v0.8.0 - (Feb 3, 2022)
 

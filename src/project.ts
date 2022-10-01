@@ -578,8 +578,10 @@ export class Project {
    * the project's `sourceModules` and `usedBy` maps are up to date.
    */
   public moduleContentChanged(fileOrPath:string) {
+    // any changes here should also be reflected in SourceModules.load()
     if (as.isCodeFile(fileOrPath) || as.isAdditionalExtensionFile(fileOrPath))
-      this.requestSourceModuleReload(fileOrPath); // <-- requestSourceModuleReload has a debouncer to reduce excessive re-parsing
+      if (! (this.sourceModules.isExcludedByNonRootPaths(fileOrPath) || (this.sourceModules.isExcludedByRootPaths(fileOrPath))) )
+        this.requestSourceModuleReload(fileOrPath); // <-- requestSourceModuleReload has a debouncer to reduce excessive re-parsing
   }
 
 }

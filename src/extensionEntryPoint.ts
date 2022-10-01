@@ -45,8 +45,6 @@ import { ImportHelperUi, IHMode } from './importHelperUi';
 import * as fs from 'fs';
 import { docs } from './document';
 import * as vs from './common/vscodeSupport';
-import * as plainQuickPick from './plainQuickPick';
-import * as addImportAPI from './importHelperApi';
 import * as ss from './common/systemSupport';
 import * as as from './appSupport';
 import { projects } from './project';
@@ -54,7 +52,6 @@ import { projects } from './project';
 // globals for debugging
 // (global as any).$vscode = vscode;
 // (global as any).$plainQuickPick = plainQuickPick;
-// (global as any).$addImportAPI = addImportAPI;
 // (global as any).$ss = ss;
 // (global as any).$docs = docs;
 // (global as any).$globals = vs.globals;
@@ -149,4 +146,3 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
   vs.globals.isExtensionActive = false;
 }
-

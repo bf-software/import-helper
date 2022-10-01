@@ -7,12 +7,14 @@ import * as as from './appSupport';
 import { Token, TK } from './token';
 
 
-/** represents the full or partial symbol to the left of the cursor when import helper is invoked. */
-export class EditorSearchSymbol {
+/** represents a javascript/typescript identifier */
+export class Identifier {
+  /** text of the identifier */
   public text:string = '';
-  public isComplete:boolean = false;
-  public isSymbol:boolean = false;
-  public startPos:number|undefined;
+  /** indicates if the symbol under the cursor is definitely a symbol and not a module name or module alias */
+  public isSymbol: boolean = false;
+  /** position the identifier was found in the document */
+  public startPos: number|undefined;
 }
 
 
@@ -100,59 +102,50 @@ export class Document {
   }
 
   /**
-    returns a token suitable for using as the default string in an Add Import module search.
-    Complete (non-partial) symbols will start with double quotes.
-  */
-  public parseEditorSearchSymbol(): EditorSearchSymbol | undefined {
+   * returns the line of text the cursor is on.  This does not include newline characters.
+   */
+  public getCursorLineText():string {
+    return this.vscodeTextEditor!.document.lineAt(this.vscodeTextEditor!.selection.active.line).text;
+  }
 
-    // grab the text of the source line left of the cursor
-    let linePos = this.cursorPos - 1;
-    let ch = '';
-    let sourceLine = '';
-    while ( true ) {
-      ch = (linePos >= 0 ? this.getCh(linePos) : '\n')
-      if (ch.includes('\n')) // <-- on Windows the new line "character" is returned from getCh as '\r\n' (2 characters long -- even if the document is set to "LF"!)
-        break;
-      sourceLine = ch + sourceLine;
-      linePos--;
-    }
+  /**
+   *  returns a symbol suitable for using as the default string in an Add Import module search
+   */
+  public getIdentifierUnderCursor(): Identifier | undefined {
+    let sourceLine = this.getCursorLineText();
+    let sourceLineStartPos = this.getCursorLineStartPos();
+    let lineCursorPos = this.cursorPosition.character;
+    let result = new Identifier();
 
-    linePos++; // <-- places the position at the first character on the line
-
-    // parse out the left most symbol, and its following character
+    // parse all the tokens and find the identifier under the cursor
+    let theIdentifier = '';
     let token = new Token();
     token.sourceCode = sourceLine;
     token.getNext();
-    let lastSymbol = '';
-    let followingCharacter = '';
-    let afterLastSymbolPos = -1;
     while (token.kind != TK.EndOfFileToken) {
       if (token.kind == TK.Identifier) {
-        lastSymbol = token.text;
-        afterLastSymbolPos = token.sourcePos;
-        followingCharacter = sourceLine.substr(afterLastSymbolPos,1);
+        if (lineCursorPos >= token.startPos && lineCursorPos <= token.endPos+1) {
+          result.text = token.text;
+          result.startPos = sourceLineStartPos + token.startPos;
+          let followingCharacter = sourceLine.substr(token.sourcePos,1);
+          if (followingCharacter == '[' || followingCharacter == '(')
+            result.isSymbol = true;
+          break;
+        }
       }
       token.getNext();
     }
 
-    if (!lastSymbol)
+    if (result.text == '')
       return;
 
-    let editorSearchSymbol = new EditorSearchSymbol();
-    editorSearchSymbol.text = lastSymbol;
-    editorSearchSymbol.startPos = linePos + (afterLastSymbolPos - lastSymbol.length);
+    return result;
 
-    // if there are any non-space characters after the symbol, we'll assume it's complete and start it with a " so the search will look for an exact match
-    let endingChars = sourceLine.substring(afterLastSymbolPos);
-    if (endingChars.match(/\S/))
-      editorSearchSymbol.isComplete = true;
+  }
 
-    // if the character following the last symbol is a [ or (, then we can assume the symbol is an imported symbol, and not a module alias
-    if (followingCharacter == '[' || followingCharacter == '(')
-      editorSearchSymbol.isSymbol = true;
-
-    return editorSearchSymbol;
-
+  public getCursorLineStartPos(): number {
+    let line = this.getCursorLine();
+    return this.positionToPos(new vscode.Position(line,0));
   }
 
 

@@ -3,7 +3,7 @@
 	"publisher": "bf-s",
 	"displayName": "Import Helper",
 	"description": "quickly import modules, aliases, and symbols via a search (for typescript, javascript, and svelte)",
-	"version": "1.1.0",
+	"version": "1.1.1",
 	"icon": "out-bundle/images/BF-Software/icon.png",
 	"engines": {
 		"vscode": "^1.64.0"
@@ -13,7 +13,10 @@
 		"type": "git"
 	},
 	"categories": [
-		"Other"
+		"Programming Languages"
+	],
+  "keywords": [
+		"javascript", "typescript", "svelte", "import", "modules"
 	],
 	"activationEvents": [
 		"onStartupFinished",

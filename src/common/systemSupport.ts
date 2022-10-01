@@ -5,6 +5,26 @@
     - Electron
 */
 
+// javascript language support /////////////////////////////////////////////////////
+
+/** thanks to: https://stackoverflow.com/questions/60325323/how-to-test-to-determine-if-browser-supports-js-regex-lookahead-lookbehind */
+function supportsRegexLookaround() {
+  try {
+    return (
+      "hibyehihi"
+        .replace(new RegExp("(?<=hi)hi", "g"), "hello")
+        .replace(new RegExp("hi(?!bye)", "g"), "hey") === "hibyeheyhello"
+    );
+  } catch (error) {
+    return false;
+  }
+}
+
+export const supports = {
+  regexLookaround: supportsRegexLookaround()
+}
+
+
 // files and paths /////////////////////////////////////////////////////////////////
 export function extractFileName(file:string):string {
   return (file.split('\\').pop() ?? '' ).split('/').pop() ?? '';
@@ -155,15 +175,15 @@ export function times10ToThe(num:bigint, power:number):bigint {
   return num * 10n**BigInt(power);
 }
 
-export function numberOrUndefined(num:number|string|undefined):number|undefined {
-  if (typeof num == 'undefined')
+export function numberOrUndefined(num:number|string|undefined|null):number|undefined {
+  if (isBlank(num))
     return;
   if (typeof num == 'number')
     return num;
   return Number(num);
 }
 
-export function stringOrUndefined(num:number|string|undefined):string|undefined {
+export function stringOrUndefined(num:number|string|undefined|null):string|undefined {
   if (typeof num == 'undefined')
     return;
   return String(num);
@@ -263,8 +283,12 @@ export function containsText(haystack:string | string[], needle:string, arraySub
   return false;
 }
 
-export function isBlank(s:string|number|null|undefined):boolean {
-  return (s == null || s == '');
+export function isBlank(s:any):boolean {
+  if (typeof s == 'undefined' || s == null)
+    return true;
+  if (typeof s == 'string' && s == '')
+    return true;
+  return false;
 }
 
 export function firstNonBlank( ...items:StringableRest):string {
@@ -273,7 +297,7 @@ export function firstNonBlank( ...items:StringableRest):string {
     items = items[0];
 
   for (let item of items) {
-    if (item == null || item == '') {
+    if (isBlank(item)) {
       // no nothing
     } else {
       result += item;
@@ -288,8 +312,7 @@ export function ifBlank(s:number|null|undefined,then:number):number;
 export function ifBlank(s:string|number|null|undefined,then:string|number):string|number {
   if (isBlank(s))
     return then;
-  else
-    return s ?? then;
+  return s!;
 }
 
 export function prefix(pfx:string,s:string|undefined):string {
@@ -415,12 +438,18 @@ export function hasEllipsis(s:string):boolean {
   return s.indexOf('…') > -1;
 }
 
-
+/**
+ *  capitalize the first letter of a string
+ *
+ *  from: https://stackoverflow.com/questions/1026069/how-do-i-make-the-first-letter-of-a-string-uppercase-in-javascript
+ */
 export function capitalize(s:string) {
-  let firstCP = s.codePointAt(0) ?? 0;
-  let i = firstCP > 0xFFFF ? 2 : 1;
-
-  return String.fromCodePoint(firstCP).toUpperCase() + s.slice(i);
+  let code = s.charCodeAt(0) | 0;
+  return (
+    code >= 0xD800 && code <= 0xDBFF ? // Detect surrogate pair
+      s.slice(0,2).toLocaleUpperCase() + s.substring(2) :
+      s.charAt(0).toLocaleUpperCase() + s.substring(1)
+  );
 }
 
 export function byteToString(byte:number):string {
@@ -430,7 +459,6 @@ export function byteToString(byte:number):string {
 export function numberToString(num:number | bigint):string {
   return num.toLocaleString('fullwide',{useGrouping:false,maximumFractionDigits:20});
 }
-
 
 export function round(n:number,decimalPlaces:number):number {
   return Math.round(n*(decimalPlaces*10))/(decimalPlaces*10);
@@ -583,7 +611,7 @@ export function unescapeSlashes(s:string) {
  * splits a string into an array by the newlines.  Since this is designed to handle windows and unix style line endings, the
  * ending found at the end of each line is saved along with the text of the line.
  */
-export function strToLines(s:string):{line:string, newLine:string}[] {
+export function stringToLines(s:string):{line:string, newLine:string}[] {
    let result = [];
    let matches = Array.from(s.matchAll(/\r\n|\n/g));
    let p = 0;
@@ -602,6 +630,27 @@ export function strToLines(s:string):{line:string, newLine:string}[] {
      });
    return result;
 }
+
+/**
+ * same as parseInt(), except it returns undefined instead of NaN
+ */
+export function stringToInt(s:string):number|undefined {
+  let result = parseInt(s);
+  if (isNaN(result))
+    return undefined;
+  return result;
+}
+
+/**
+ * returns an integer number, or raises an exception
+ */
+export function stringToIntOrFail(s: string, errorItem: string = 'string') {
+  let result = stringToInt(s);
+  if (typeof result == 'undefined')
+    throw new Error(`${errorItem} "${s}" is not an integer`);
+  return result;
+}
+
 
 
 /**
@@ -650,7 +699,7 @@ export function indent(s:string, secondParam:string|string[]|number|number[], in
   if (usesSizes)
     arrayLength = sizes.length;
 
-  let lines = strToLines(s);
+  let lines = stringToLines(s);
   let result = '';
   let indentIndex = 0;
   for (let item of lines) {
@@ -663,6 +712,18 @@ export function indent(s:string, secondParam:string|string[]|number|number[], in
     if (indentIndex < arrayLength-1)
       indentIndex++;
   }
+  return result;
+}
+
+/**
+ * this implements the standard functionality for template tags.  This is used when browsers can't
+ * handle the code in the L() function.
+ */
+function defaultTemplateTag(templateStrings:TemplateStringsArray,...params:(string|number)[]):string {
+  let result = '';
+  let i = 0;
+  for (let s of templateStrings)
+    result += s + params[i++];
   return result;
 }
 
@@ -764,6 +825,9 @@ export function indent(s:string, secondParam:string|string[]|number|number[], in
  *
  */
 export function L(templateStrings:TemplateStringsArray,...params:(string|number)[]):string {
+  if (!supports.regexLookaround)
+    return defaultTemplateTag(templateStrings,...params);
+
   let joinedTemplate = templateStrings.join('\0');  // <-- starts us off with something like '\n   this \0 is\n   a template'
 
   // break the string into lines, and grab the indents for each line
@@ -816,15 +880,15 @@ export function L(templateStrings:TemplateStringsArray,...params:(string|number)
   let result = '';
   let i = 0;
   p = 0;
-  for (let match of linedUpString.matchAll(/(?<!\\)\0/g) ) {  // <-- finds all nulls which show where the params go
-    //let preText = unescapeSlashes(linedUpString.substring(p, match.index)); // <-- unescapes the lined up string before the null
+  // note: as of 4/2022 safari crashes parsing regex with lookarounds
+  for (let match of linedUpString.matchAll(new RegExp('(?<!\\\\)\\0','g') )) {  // <-- finds all nulls which show where the params go
     let preText = linedUpString.substring(p, match.index); // <-- gets the lined up string before the null
     let param = String(params[i++] ?? '') ; // gets the param's text
     let preTextIndent;
     if (p == 0)
-      preTextIndent = (preText.match(/(?=\n|^)[\t\f\v ]+$/m) ?? [''])[0]; // if it's the first call, this gets trailing whitespace after a newline or start of string
+      preTextIndent = (preText.match(new RegExp('(?=\\n|^)[\\t\\f\\v ]+$','m')) ?? [''])[0]; // if it's the first call, this gets trailing whitespace after a newline or start of string
     else
-      preTextIndent = (preText.match(/(?<=\n)[\t\f\v ]+$/m) ?? [''])[0]; // else, just gets trailing whitespace after a newline
+      preTextIndent = (preText.match(new RegExp('(?<=\\n)[\\t\\f\\v ]+$','m')) ?? [''])[0]; // else, just gets trailing whitespace after a newline
     if (preTextIndent) {
       param = indent(param, ['',preTextIndent]); // indent the param so it matches the template
       let postText = linedUpString.substring(match.index!+1); // the text after the null
@@ -840,6 +904,7 @@ export function L(templateStrings:TemplateStringsArray,...params:(string|number)
 
   return result;
 }
+
 
 
 /**
@@ -972,9 +1037,22 @@ export function def(param:any,defaultValue:any) {
     return param;
 }
 
+/**
+ * pauses execution for the supplied milliseconds.  This uses javascript's `setTimeout()` internally.
+ */
 export async function sleep(ms:number) {
   await new Promise(resolve => setTimeout(resolve, ms));
 }
+
+/**
+ * allows javascript to complete the `poll` phase of its event loop, which handles all pending I/O
+ * events and callbacks. This uses `setImmediate()` internally.
+ * See https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/
+ */
+export async function processIOEvents():Promise<void> {
+  await new Promise(resolve => setImmediate(resolve));
+}
+
 
 /**
  * turns a function into a debounced function
@@ -1355,6 +1433,10 @@ export function unixTime() {
   return Math.floor(Date.now() / 1000);
 }
 
+export function unixTimeToDate(seconds:number):Date {
+  return new Date(seconds * 1000);
+}
+
 
 /**
  * returns the elapsed time in days hours minutes seconds and milliseconds where the units used
@@ -1530,9 +1612,9 @@ export class EventParams<D,R> {
   }
 
   /**
-   * prevents any further listeners from being cued and signals to the hosting class that the event
-   * should be canceled if possible.  It will then be up to the hosting class to heed the `isEventCancelled`
-   * flag.
+   * prevents any further listeners from being cued **and signals to the hosting class** that the event
+   * should be canceled if possible.  It will then be up to the hosting class to heed the `isEventCanceled`
+   * flag to cancel whatever process it is in charge of.
    */
   public cancelEvent() {
     this.stopCues();
@@ -1544,8 +1626,11 @@ export class EventParams<D,R> {
 
 
 /**
- * represents an event attached to any object.  Unlike other event systems, this does not require that the class wanting to
- * offer events be a descendant of a specific event class.  Each `Event` can host 0 or more listeners.  Example:
+ * represents an event attached to any object. [see below for the &lt;generic&gt; type details]
+ *
+ * Unlike other event systems, this does not require that the class wanting to
+ * offer events be a descendant of a specific event class.  Each `Event` can host 0 or more listeners.
+ * Example:
  * ```
  * class car {
  *   private position = 0;
@@ -1576,27 +1661,56 @@ export class EventParams<D,R> {
  * @type R is the type of the return data coming from listeners
  */
 export class Event<D = undefined,R = undefined> {
-  private listeners = new Map<EventListener<D,R>,{once: boolean}>();
+  protected listeners = new Map<EventListener<D,R>,{once: boolean}>();
+  protected _isCueing = false;
 
   /** when false, calling {@link cue}() will not call any listeners */
   public active = true;
+
 
   public get hasListeners():boolean {
     return this.listeners.size > 0;
   }
 
+  public get isCueing() {
+    return this._isCueing;
+  }
+
   /**
-   * adds an event listener to the event.  The listener will be executed when the event's `cue()` method is called.
-   * Multiple events are executed in the order they are added.
+   * adds an event listener to the event.  The listener will be executed when the event's `cue()` or
+   * `cueAsync()` methods are called by the hosting class.
+   *
+   * example:
+   * ```
+   *   myEvent.do((data, eventParams) => {
+   *     return data.num+1;
+   *   })
+   * ```
+   * in most cases, listener functions access members of the `data` object and return a result. If
+   * undefined is returned, the `defaultValue` passed into the calling `cue()` or `cueAsync()`
+   * function will be returned instead.
+   *
+   * if there are other listeners, they will all be executed in the order in which they were added.
+   * Async listeners called using `cueAsync()` will be awaited before calling the next listener.
+   *
+   * `eventParams:`{@link EventParams} includes the following members:
+   *  - `result` <-- contains the default result to be used if this listener returns undefined
+   *  - `listener` <-- a reference to this listener which can be passed to {@link remove}()
+   *  - `stopCues()` <-- call this to stop calling further listeners. This also guarantees that the
+   *                    return value will be the one from this listener.
+   *  - `cancelEvent()` <-- call this to stop calling further listeners (like `stopCues()`). but
+   *                        this also indicates to the hosting class that the entire event should
+   *                        be canceled.  It would be up to the hosting class to react to the flag.
    */
-  public do(listener: EventListener<D,R>): EventListener<D,R> {
+   public do(listener: EventListener<D,R>): EventListener<D,R> {
     this.listeners.set(listener,{once: false});
     return listener;
   }
 
   /**
-   * adds an event listener to the event and makes it the first one to be executed when the `cue()` method is called.
-   * Normally, multiple listeners are executed in the order they are added.
+   * adds an event listener to the event and makes it the first one to be executed when the `cue()`
+   * or `cueAsync()` methods are called. Normally, multiple listeners are executed in the order they
+   * are added. See {@link do}() for information about the listener parameters.
    */
   public doFirst(listener: EventListener<D,R>): EventListener<D,R> {
     let oldListeners = this.listeners;
@@ -1605,8 +1719,9 @@ export class Event<D = undefined,R = undefined> {
   }
 
   /**
-   * adds an event listener to be executed the next time the `cue()` method is called, but then removes it from the
-   * list of listeners.
+   * adds an event listener to be executed the next time the `cue()` or `cueAsync()` methods are
+   * called, but then removes it from the list of listeners. See {@link do}() for information about
+   * the listener parameters.
    */
   public doOnce(listener: EventListener<D,R>): EventListener<D,R> {
     this.listeners.set(listener,{once: true});
@@ -1614,8 +1729,9 @@ export class Event<D = undefined,R = undefined> {
   }
 
   /**
-   * makes the event listener the first to be executed the next time the `cue()` method is called but then removes it from the
-   * list of listeners.
+   * makes the event listener the first to be executed the next time the `cue()` or `cueAsync()`
+   * methods are called but then removes it from the list of listeners. See {@link do}() for
+   * information about the listener parameters.
    */
   public doOnceFirst(listener: EventListener<D,R>): EventListener<D,R> {
     let oldListeners = this.listeners;
@@ -1632,152 +1748,109 @@ export class Event<D = undefined,R = undefined> {
   }
 
   /**
-   * classes that host the event should execute this method to call the listeners to action.
-   * Note that although {@link do}() will accept asyc functions, they will not be awaited when
-   * the host object calls cue().  Use {@link AsyncEvent} if the hosting object needs to call
-   * `await cue(...)` in order to get a return value from asynchronous listeners.
+   * classes that host the event should execute this method to call the listeners to action. Note
+   * that although {@link do}() will accept asyc functions, they will not be awaited when the host
+   * object calls cue().  Use {@link cueAsync}() if the hosting object needs to make the call with
+   * `await` in order to get a return value from asynchronous listeners.
    * @param data contains arbitrary data that the host wants to pass to the listener.
    * `data` can also be a reference to a function that returns the data. Use a function
    * when there is a performance cost to obtaining the data. That way, the cost will only be
    * incurred if there are actually listeners listening.
    * @param defaultResult what the result will be if the listeners don't assign one before returning.
+   * @returns the result of the last listener that returned something other than undefined or else it
+   * returns the defaultResult.
    */
   public cue():R | undefined;
   public cue(data:D | (() => D), defaultResult?:R ):R | undefined;
   public cue(data:D | (() => D), defaultResult:R ):R;
   public cue(data?:D | (() => D), defaultResult?:R ):R | undefined {
-    if (!this.active || this.listeners.size <= 0)
-      return defaultResult;
-    if (data instanceof Function)
-      data = data();
-    let eventParams = new EventParams<D,R>(defaultResult,undefined!);
-    for (let [listener, params] of this.listeners) {
-      if (params.once)
-        this.remove(listener);
-      eventParams.listener = listener;
-      let result = listener(data as any, eventParams);
-      if (eventParams.isEventCanceled)
+    this._isCueing = true;
+    try {
+
+      if (!this.active || this.listeners.size <= 0)
         return defaultResult;
-      if (! (result instanceof Promise) && (typeof result != 'undefined'))
-        eventParams.result = result;
-      if (eventParams.isCueingStopped)
-        break;
+      if (data instanceof Function)
+        data = data();
+      let eventParams = new EventParams<D,R>(defaultResult,undefined!);
+      for (let [listener, params] of this.listeners) {
+        if (params.once)
+          this.remove(listener);
+        eventParams.listener = listener;
+        let result = listener(data as any, eventParams);
+        if (eventParams.isEventCanceled)
+          return defaultResult;
+        if (! (result instanceof Promise) && (typeof result != 'undefined'))
+          eventParams.result = result;
+        if (eventParams.isCueingStopped)
+          break;
+      }
+      return eventParams.result;
+
+    } finally {
+      this._isCueing = false;
     }
-    return eventParams.result;
   }
 
-
-}
-
-/**
- * same as the {@link Event} class except events must be asynchronous.  This should mainly
- * be used when the hosting class needs a return value and is able to cue the event
- * asynchronously.
- */
-export class AsyncEvent<D = undefined,R = undefined> {
-  private listeners = new Map<AsyncEventListener<D,R>,{once: boolean}>();
-
-  /** when false, calling {@link cue}() will not call any listeners */
-  public active = true;
-
-  public get hasListeners():boolean {
-    return this.listeners.size > 0;
-  }
 
   /**
-   * adds an event listener to the event.  The listener will be executed when the event's `cue()` method is called.
-   * Multiple events are executed in the order they are added.
-   */
-  public do(listener: AsyncEventListener<D,R>): AsyncEventListener<D,R> {
-    this.listeners.set(listener,{once: false});
-    return listener;
-  }
-
-  /**
-   * adds an event listener to the event and makes it the first one to be executed when the `cue()` method is called.
-   * Normally, multiple listeners are executed in the order they are added.
-   */
-  public doFirst(listener: AsyncEventListener<D,R>): AsyncEventListener<D,R> {
-    let oldListeners = this.listeners;
-    this.listeners = new Map<AsyncEventListener<D,R>,{once: boolean}>([[listener,{once:false}],...oldListeners]);
-    return listener;
-  }
-
-  /**
-   * adds an event listener to be executed the next time the `cue()` method is called, but then removes it from the
-   * list of listeners.
-   */
-  public doOnce(listener: AsyncEventListener<D,R>): AsyncEventListener<D,R> {
-    this.listeners.set(listener,{once: true});
-    return listener;
-  }
-
-  /**
-   * makes the event listener the first to be executed the next time the `cue()` method is called but then removes it from the
-   * list of listeners.
-   */
-  public doOnceFirst(listener: AsyncEventListener<D,R>): AsyncEventListener<D,R> {
-    let oldListeners = this.listeners;
-    this.listeners = new Map<AsyncEventListener<D,R>,{once: boolean}>([[listener,{once:true}],...oldListeners]);
-    return listener;
-  }
-
-  public remove(listener: AsyncEventListener<D,R>) {
-    this.listeners.delete(listener);
-  }
-
-  public removeAll() {
-    this.listeners.clear();
-  }
-
-  /**
-   * classes that host the event should execute this method to call the listeners to action.
+   * classes that host the event should execute this method to call the listeners to action when
+   * it needs to await an async result.
    * @param data contains arbitrary data that the host wants to pass to the listener.
    * `data` can also be a reference to a function that returns the data. Use a function
    * when there is a performance cost to obtaining the data. That way, the cost will only be
    * incurred if there are actually listeners listening.
    * @param defaultResult what the result will be if the listeners don't assign one before returning.
+   * @returns the result of the last listener that returned something other than undefined or else it
+   * returns the defaultResult.
    */
-  public async cue():Promise<R | undefined | void>;
-  public async cue(data:D | (() => D), defaultResult?:R ):Promise<R | undefined | void>;
-  public async cue(data:D | (() => D), defaultResult:R ):Promise<R>;
-  public async cue(data?:D | (() => D), defaultResult?:R ):Promise<R | undefined | void > {
-    if (!this.active || this.listeners.size <= 0)
-      return defaultResult;
-    if (data instanceof Function)
-      data = data();
-    let eventParams = new EventParams<D,R>(defaultResult,undefined!);
-    for (let [listener, params] of this.listeners) {
-      if (params.once)
-        this.remove(listener);
-      eventParams.listener = listener;
-      let result = await listener(data as any, eventParams);
-      if (eventParams.isEventCanceled)
+  public async cueAsync():Promise<R | undefined | void>;
+  public async cueAsync(data:D | (() => D), defaultResult?:R ):Promise<R | undefined | void>;
+  public async cueAsync(data:D | (() => D), defaultResult:R ):Promise<R>;
+  public async cueAsync(data?:D | (() => D), defaultResult?:R ):Promise<R | undefined | void > {
+    this._isCueing = true;
+    try {
+      if (!this.active || this.listeners.size <= 0)
         return defaultResult;
-      if (typeof result != 'undefined')
-        eventParams.result = result;
-      if (eventParams.isCueingStopped)
-        break;
+      if (data instanceof Function)
+        data = data();
+      let eventParams = new EventParams<D,R>(defaultResult,undefined!);
+      for (let [listener, params] of this.listeners) {
+        if (params.once)
+          this.remove(listener);
+        eventParams.listener = listener;
+        let result = await listener(data as any, eventParams);
+        if (eventParams.isEventCanceled)
+          return defaultResult;
+        if (typeof result != 'undefined')
+          eventParams.result = result;
+        if (eventParams.isCueingStopped)
+          break;
+      }
+      return eventParams.result;
+    } finally {
+      this._isCueing = false;
     }
-    return eventParams.result;
   }
 
 }
 
+
 /**
  * offeres an `onChanged` event that gets cued when a change to the decentant's instance occurs. Use
  * the `create()` static function to instantiate this class.
- * @todo: prevent this class and its decendents from being minified
+ *
+ * **important**: make sure the property names you are interested in watching do not get minified
+ * when you put your code into production.
  */
 export class ChangeDetector {
   /**
-   * when this is false, on changed and on set events will not be cued.  Use this or one of the
-   *
+   * when this is false, on changed and on set events will not be cued. Use may also use the {@link oneEvent}()
+   * and {@link noEvents}() functions to control the change events.
    */
   public shouldCueEvents:boolean = true;
 
   /**
-   *  this must be called to instantiate the class instead of the constructor.
+   *  this must be called to instantiate the class instead of `new XXXX()`.
    *
    *  #### technical details
    *
@@ -1835,14 +1908,20 @@ export class ChangeDetector {
   }
 
   /**
-   * this event gets cued whenever a parameter changes.
-   * `data.propertyKey:string` contains the name of the changing property.
-   * if `propertyKey` is an empty string, it means that multiple properties changed.
+   * **important**: make sure the property names you are interested in watching do not get minified.
+   *
+   * this event gets cued whenever a property actually changes. Use {@link onSet} if you want to
+   * know if a property was set at all -- even if it was set to the same value.
+   * `data.propertyKey:string` contains the name of the changing property. if `propertyKey` is an
+   * empty string, it means that multiple properties changed.
    */
   public onChanged = new Event<{propertyKey:string}>();
 
   /**
-   * this event gets cued whenever a parameter is set, even if it's being set to the same value.
+   * **important**: make sure the property names you are interested in watching do not get minified.
+   *
+   * this event gets cued whenever a property is set, even if it's being set to the same value. Use
+   * {@link onChanged} if you want to know if a property was actually changed to s different value.
    * `data.propertyKey:string` contains the name of the changing property.
    */
   public onSet = new Event<{propertyKey:string}>();
@@ -1913,4 +1992,69 @@ export function noLowerThan(testNumber: number, minNumber: number): number {
 
 export function fitRange(testNumber: number, minNumber: number, maxNumber: number): number {
   return noLowerThan(noHigherThan(testNumber,maxNumber),minNumber);
+}
+
+export function getLines(multiLineString: string) {
+  return multiLineString.replace(/\r\n/g,'\n').split('\n');
+}
+
+/**
+ * gets the value of a `name=value` pair
+ */
+export function getValue(s: string, separator:string = '='): string {
+  let p = s.indexOf(separator);
+  return s.substring(p+separator.length);
+}
+
+/**
+ * gets the name of a `name=value` pair
+ */
+export function getName(s: string, separator:string = '='): string {
+  let p = s.indexOf(separator);
+  return s.substring(0,p);
+}
+
+/**
+ * logs the value to the console as it was during the call.  If you use just plain
+ * console.log(), the value will be the current value of the object at the time you
+ * look at it in the browser's debugging tools.
+ */
+export function debug(value:any) {
+  console.log(JSON.parse(JSON.stringify(value)));
+}
+
+export function deepClone(object: any):any {
+  return JSON.parse(JSON.stringify(object));
+}
+
+/** todo: implement this! **/
+// export function dateToRelativeDay(date: Date, fullDateOptions:Intl.DateTimeFormatOptions):string {
+//   return date.toLocaleDateString(undefined, fullDateOptions);
+// }
+
+// export function dateToRelativeMinute(date: Date, fullDateOptions:Intl.DateTimeFormatOptions):string {
+//   console.log(date);
+//   return date.toLocaleDateString(undefined, fullDateOptions);
+// }
+
+export function getHumanByteSize(sizeInBytes: number) {
+  if (sizeInBytes < 1000)
+    return sizeInBytes+' bytes';
+  else if (sizeInBytes <= 1000000)
+    return (sizeInBytes/1000).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' kb';
+  else if (sizeInBytes <= 1000000000)
+    return (sizeInBytes/1000000).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' Mb';
+  else
+    return (sizeInBytes/1000000000).toLocaleString(undefined, { maximumFractionDigits: 2 })+' Gb';
+}
+
+/**
+ * case insensitive locale sort
+ */
+export function sortStrings<T>(selectItems: T[], getValues:  (a: T, b: T) => {a:string, b:string}  =  (a,b)=>({a:String(a),b:String(b)})  ) {
+  let collator = new Intl.Collator(undefined, {sensitivity: 'accent'});
+  selectItems.sort((aSource,bSource) => {
+    let {a, b} = getValues(aSource,bSource);
+    return collator.compare(a, b);
+  });
 }

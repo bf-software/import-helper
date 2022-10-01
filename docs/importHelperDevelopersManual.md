@@ -184,11 +184,9 @@ Modules offered by the node_modules folder are pulled in by leveraging vscode's 
 
 # To Do
 
+## bugs
+
 ## (easy items)
-
-### symbol groups
-
-group symbols in step 2 by symbol type, and add the ability to filter types by starting a search term with a /
 
 ### paths
 
@@ -196,6 +194,10 @@ scan folders pointed to by tsconfig.json --> paths for modules in addition to th
 (although, I'm not sure if TypeScript modules will work if they are located outside of the project -- and not specified in the tsconfig.json --> include setting. I still need to do some investigation there.)
 
 ### (hard items)
+
+### file system watcher: symbolic links
+
+files added to folders within symbolic links don't seem to trigger the file wwatcher events
 
 ### webviews --> treeview
 

@@ -344,7 +344,7 @@ qt.module( () => {
     });
 
     qt.test('multiple real asynchronous listeners (with await)', async () => {
-      let onEvent = new ss.AsyncEvent<string,string>();
+      let onEvent = new ss.Event<string,string>();
       onEvent.do(async (s, e)=>{
         await ss.sleep(100);
         e.result += '!';
@@ -353,7 +353,7 @@ qt.module( () => {
         await ss.sleep(100);
         e.result += '?';
       });
-      qt.testValue( await onEvent.cue('hi','wow') ).shouldEqual('wow!?');
+      qt.testValue( await onEvent.cueAsync('hi','wow') ).shouldEqual('wow!?');
     });
 
 

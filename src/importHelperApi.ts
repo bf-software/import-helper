@@ -42,7 +42,7 @@ import { ModuleSymbol, ModuleSymbols } from './moduleSymbol';
 import { ModuleSearchTerms, SymbolSearchTerms, MTT, STT } from './searchTerms';
 import { PlainQuickPickItem } from './plainQuickPick';
 import { ProjectModuleResolver, ProjectFileMap } from './projectModuleResolver';
-import { EditorSearchSymbol } from './document';
+import { Identifier } from './document';
 import { ReferenceCountQuickPickItem } from './quickPickItems';
 
 export const cReferenceCountSortWeight = 70;
@@ -68,7 +68,7 @@ export class ImportHelperApi {
 	public exportSymbols = new ModuleSymbols();
 	public startingSymbolSearchText:string = '';
 	public mode:IHMode = IHMode.addImport;
-	public onGetSpecificFileChoice = new ss.AsyncEvent<ProjectFileMap,string>();
+	public onGetSpecificFileChoice = new ss.Event<ProjectFileMap,string>();
   public onShowMessage = new ss.Event<{msg:string, style:MessageStyle}>();
 
   public get isProjectSupported():boolean {
@@ -119,7 +119,7 @@ export class ImportHelperApi {
     else if (files.size == 1)
 		  fileToOpen = files.first!.key;
     else
-      fileToOpen = (await this.onGetSpecificFileChoice.cue(files)) ?? '';
+      fileToOpen = (await this.onGetSpecificFileChoice.cueAsync(files)) ?? '';
 		if (fileToOpen != '')
 		  vscode.window.showTextDocument(vscode.Uri.file(fileToOpen));
 	}
@@ -259,21 +259,35 @@ export class ImportHelperApi {
   }
 
   /**
-    looks at the cursor position and parses out the nearest text token to the left of it. However, if the user hasn't recently changed any text
-    on that line, this will simply return nothing.
+   * when beginning a search, if the identifier under the cursor seems like it's there because the user
+   * is currently trying to import something they've just typed, then use the identifier as the search
+   * text.  If the user ends up importing that identifier, then the partial identifier should be
+   * automatically completed in the editor if it in fact was a partial identifier.
+   *
+   * how this is done:
+   *
+   * firstly, if the line was not recently edited, this returns undefined and intructs the caller to
+   * do nothing.
+   *
+   * if the cursor is inside or to the immediate right of an identifier, it is returned along with the
+   * starting position of the identifier.
+   *
+   * Later, the caller will replace the identifier in the text editor if the imported identifier began with
+   * the identifier this returns.
+   *
   */
-  public getEditorSearchSymbol(): EditorSearchSymbol | undefined {
-    const cSearchTokenTimeoutSeconds = 30;
+  public getEditorSearchIdentifier(): Identifier | undefined {
+    const cTimeoutSeconds = 30;
     if (!docs.active)
       return;
-    if (docs.active.msecSinceLastChange > cSearchTokenTimeoutSeconds * 1000)
+    if (docs.active.msecSinceLastChange > cTimeoutSeconds * 1000)
       return;
     docs.active?.syncEditor();
     let line = docs.active.getCursorLine();
 	let lastChangedLine = docs.active.lastChangedLine;
     if (line != lastChangedLine)
       return;
-    return docs.active.parseEditorSearchSymbol();
+    return docs.active.getIdentifierUnderCursor();
   }
 
   /**
@@ -393,7 +407,7 @@ export class ImportHelperApi {
     return Boolean( recommended.find( (item) => item.importStatement.mainIdentifier == mainIdentifier ) );
   }
 
-  public async addImportStatement(fromStep:number, editorSearchSymbol?:EditorSearchSymbol) {
+  public async addImportStatement(fromStep:number, editorSearchIdentifier?:Identifier) {
 		this.addStatementWarning = '';
 
     if (!docs.active)
@@ -453,16 +467,15 @@ export class ImportHelperApi {
       await this.goUpToImports();
 		}
 
-    // check to see if there was a search symbol from the left of the editor's cursor used as a default text. If so
-    // we may be able to complete the text in the editor.
-    if (editorSearchSymbol && !editorSearchSymbol.isComplete) {
+    // complete editor text
+    if (editorSearchIdentifier) {
       let pos = docs.active.getPos('editorSearchSymbol') ?? -1;
       if (pos > -1) {
         let mainIdentifier = selectedQPI.importStatement.mainIdentifier;
-        if (mainIdentifier && mainIdentifier.startsWith(editorSearchSymbol.text)) {
+        if (mainIdentifier && mainIdentifier.startsWith(editorSearchIdentifier.text)) {
 
           let insertStartPos = pos;
-          let insertEndPos = pos + editorSearchSymbol.text.length;
+          let insertEndPos = pos + editorSearchIdentifier.text.length;
 
           // sanity check
           let cursorPosLine = docs.active.cursorPosition.line;
@@ -606,6 +619,8 @@ export class ImportHelperApi {
 			item.importStatement.initNonScannedStatement();
 			item.importStatement.importKind = ImportKind.defaultAlias;
 			item.importStatement.alias = nameAlias;
+      if (isSvelte)
+        item.importStatement.alias = ss.capitalize(item.importStatement.alias);
 			items.push(item);
 
 			// add an option for an all alias of the same name as the module

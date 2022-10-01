@@ -224,7 +224,7 @@ export function resolveFile(fromPath:string, toRelativeOrAbsoluteFile:string):st
  * it simply returns the value of `toRelativeOrAbsolutePath`.
  */
 export function resolvePath(fromPath:string, toRelativeOrAbsolutePath:string):string {
-  return ss.internalizePath(nodePath.resolve(fromPath,toRelativeOrAbsolutePath));
+  return ss.internalizePath( nodePath.resolve(ss.internalizePath(fromPath), ss.internalizePath(toRelativeOrAbsolutePath) ) );
 }
 
 /**
@@ -363,4 +363,9 @@ export async function deleteFileIfExists(file:string):Promise<boolean> {
     return true;
   }
   return false;
+}
+
+export async function getFileModifiedDate(file:string): Promise<Date> {
+  let stats = await fsp.stat(file);
+  return stats.mtime;
 }

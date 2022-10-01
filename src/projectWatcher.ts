@@ -6,7 +6,7 @@ import * as as from './appSupport';
 
 /**
  * watches the files and folders in a project, as well as the project config files that define
- * the project. (tsconfig.json, tsconfig.json, package.json)
+ * the project. (tsconfig.json, package.json)
  */
 export class ProjectWatcher {
   private projectFileWatchers: vscode.FileSystemWatcher[] = [];
@@ -36,12 +36,17 @@ export class ProjectWatcher {
     watcher.onDidDelete(uri => {
       let fileOrDir = ss.internalizeFile(uri.fsPath);
       let absoluteShortenedModuleSpecifier = new as.ModuleSpecifierJuggler(fileOrDir).shortenedModuleSpecifier;
+      // if the file that was deleted wasn't one of our modules, just ignore it
       if (this.project.sourceModules.byUniversalPathShortenedModuleSpecifier(absoluteShortenedModuleSpecifier))
         this.project.isDirty = true;
     });
 
     watcher.onDidChange(uri => {
+      // this gets called for both changes to existing files, and new files
       let fileOrPath = ss.internalizeFile(uri.fsPath);
+      // if the file that was changed wasn't one of our modules, the call to `moduleContentChanged` below may
+      // add it because it might be a new file that should be in our modules. (or it might just be some
+      // generated code resulting from traspiling, in which case it will be ignored.)
       this.project.moduleContentChanged(fileOrPath);
     });
 

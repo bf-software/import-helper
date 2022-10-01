@@ -1,6 +1,6 @@
 /**
  * adds features to the default error handling system.  This includes the ability to map the
- * error stack to original source files isong .map files.  It also makes the stack appear
+ * error stack to original source files using .map files.  It also makes the stack appear
  * in messages as a more friendly call tree, for example:
  * ```
  * main.ts:12:3
@@ -51,6 +51,10 @@ interface ESError extends Error {
   unmappedStack: cs.FfArray<StackItem>;
 }
 
+export function resolveFromProjectPath(file: string) {
+  return ns.getRelativePath(ss.ifBlank(settings.projectRootPath, settings.entryPointPath) , file);
+}
+
 export class ErrorSettings {
   /**
    * include bootstrap code in error stacks.  The bootstrap code is everything above the entry point of the project.
@@ -62,27 +66,31 @@ export class ErrorSettings {
     return ss.extractPath(this.entryPointFile);
   }
   /**
-   * path to the root of the project.  This will become the base to all relative file paths in error stacks.
-   * Vscode bases relative paths on the main open folder when opening files with click-to-open in the debug console.
-   * This may need to be set to get vscode to open your code files properly.
+   * path to the root of the project.  This will become the base to all relative file paths in error
+   * stacks. Vscode bases relative paths on the main open folder when opening files with
+   * click-to-open in the debug console. This may need to be set to get vscode to open your code
+   * files properly.
    */
   public projectRootPath = '';
 }
 
 export interface InitEntryPointOptions {
   /**
-    indicates the number of levels ("callers") above the line in the code this initEntryPoint() was placed in should be considered the entry point module.
-    If this is not specified, it's assumed to be 1, which means the actual module that called initEntryPoint().  If you set this as 2, then the entry point
-    would be whatever module called the module, that called initEntryPoint(). etc.
-  */
+   * indicates the number of levels ("callers") above the line in the code this initEntryPoint() was
+   * placed in that should be considered the entry point module. If this is not specified, it's
+   * assumed to be 0, which means the actual module that called initEntryPoint().  If you set this as
+   * 1, then the entry point would be whatever module called the module, that called
+   * initEntryPoint(), etc.
+   */
   levelsAbove?:number,
+
   /**
     if errorSupport.ts is producing relative links in it's stack trace that vscode can't find when you click on them, try setting this option.
 
     vscode uses it's open project folder as the root of clickable relative paths in the debug console.  Set this to a relative path that
     takes you from the path of your running application's entry point, to the open folder in vscode. For example, if you have this
     structure:
-
+    ```
     /myProjects
       /myApp
         /out
@@ -90,7 +98,7 @@ export interface InitEntryPointOptions {
           hello.js.map
         /src
           hello.ts
-
+    ```
     if you have /myProjects/myApp open in vscode, then make this call in hello.ts:
       `errorSupport.initEntryPoint({relativePathFromScriptToVSCodeFolder:'../'})`
   */
@@ -109,15 +117,14 @@ export interface InitEntryPointOptions {
  * code is not helpful and just adds clutter to already difficult to read stack traces.
  */
 export function initEntryPoint(options?:InitEntryPointOptions) {
-  let levelsAbove = options?.levelsAbove ?? 1;
+  let levelsAbove = options?.levelsAbove ?? 0;
   let item:StackItem | undefined;
   if (typeof options?.relativePathFromScriptToVSCodeFolder == 'string') {
-    item = getCallerLocation();
-    if (item)
-      settings.projectRootPath = ns.resolvePath( ss.extractPath(item.originalLocation?.file ?? item.file), options.relativePathFromScriptToVSCodeFolder);
+    settings.projectRootPath = ss.extractPath(ns.getEntryPointFile());
+    settings.projectRootPath = ns.resolvePath(settings.projectRootPath, options.relativePathFromScriptToVSCodeFolder);
   }
-  if (!item || levelsAbove > 1)
-    item = getCallerLocation(levelsAbove);
+  if (!item || levelsAbove > 0)
+    item = getCallerLocation(levelsAbove+2);
   if (!item)
     throw Error('errorSupport: initEntryPoint() could not determine the entry point file for the project.');
   settings.entryPointFile = item.file;
@@ -168,18 +175,66 @@ class SourceLocator {
  */
 let sourceLocators = new cs.FfMap<string,SourceLocator>();
 
-export function formatStackItem(item:StackItem) {
-  let file = (item.originalLocation ? item.originalLocation.file : item.file);
-  let line = (item.originalLocation ? item.originalLocation.line : item.line);
-  let column = (item.originalLocation ? item.originalLocation.column : item.column);
-  if (ss.isAbsolutePath(file))
-    file = ns.getRelativePath(ss.ifBlank(settings.projectRootPath, settings.entryPointPath) , file);
-  let result = `${file}:${line}:${column}`;
-  result += ss.prefix('    ⮡ ', ss.concatWS('.',item.className, ss.suffix(item.functionName ?? '','()') ) );
-  return result;
+/**
+ * returns the function name in the following format: `ClassName.functionName()`
+ *
+ */
+export function getFunctionName(item:StackItem) {
+  return ss.concatWS('.',item.className, ss.suffix(item.functionName ?? '','()') );
 }
 
+export function getCodeFile(item:StackItem): string {
+  return (item.originalLocation ? item.originalLocation.file : item.file);
+}
 
+export function getCodeLineColumn(item:StackItem): string {
+  let line = (item.originalLocation ? item.originalLocation.line : item.line);
+  let column = (item.originalLocation ? item.originalLocation.column : item.column);
+  return `${line}:${column}`;
+}
+
+/**
+ * returns a string containing the **relative** path from `settings.projectRootPath` to the module file
+ * plus the line and column numbers, ex: `./src/myProject/myModule.ts:10:15`
+ */
+export function getCodeLocation(codeFile:string, codeLineColumn:string):string;
+export function getCodeLocation(item:StackItem):string;
+export function getCodeLocation(itemOrCodeFile:StackItem|string, codeLineColumn:string = ''):string {
+  let codeFile:string;
+  if (typeof itemOrCodeFile == 'object') {
+    let item = itemOrCodeFile;
+    codeFile = getCodeFile(item);
+    codeLineColumn = getCodeLineColumn(item);
+  } else
+    codeFile = itemOrCodeFile;
+  if (ss.isAbsolutePath(codeFile))
+    codeFile = resolveFromProjectPath(codeFile);
+  return `${codeFile}:${codeLineColumn}`;
+}
+
+/**
+ * returns each line of a stack trace as a `call tree` where the top represents the root and
+ * additional lines represent the leaves:
+ * ```
+ *../relative/path/to/file.ts:10:20    start()
+ *⮡  ../relative/path/to/file.ts:10:20  ⮡ test()
+ * ⮡  ../relative/path/to/file.ts:10:20  ⮡ getvalue()
+ *  ⮡  ../relative/path/to/file.ts:10:20  ⮡ Converter.parse()
+ *   ⮡  ../relative/path/to/a/long/file-name.ts:10:20  ⮡ calculate()
+ *    ⮡  ../relative/short.ts:10:20                     ⮡ output()
+ * ```
+ *
+ * the first line of the stack represents the entry point into the app. Subequent lines indicate
+ * additional calls in the call tree.  The last line represents the final call in the call
+ * tree--usually the one that caused the error.
+ *
+ * the file names are uniformly indented, with each subequent line becoming indented by one
+ * character.
+ *
+ * the function calls will be indented the same way as long as the line above allows it.  If the
+ * file path of the line above is very long, the indent of the function call will be pushed outward
+ * so that subsequent functions are never indented less then the calling function.
+ */
 export function formatErrorStack(errorStack:cs.FfArray<StackItem>, options?:StackFormatOptions):string {
   options = options ?? {};
   options.showBootstrapStack = options?.showBootstrapStack ?? settings.showBootstrapStack;
@@ -199,8 +254,7 @@ export function formatErrorStack(errorStack:cs.FfArray<StackItem>, options?:Stac
       found = startFound;
   }
 
-  let indent = '';
-  let arrow = '';
+  let lastFunctionStart = 0;
   let line = 0;
   if (found) {
     for (let i=found.index; i >= 0; i--) {
@@ -209,11 +263,26 @@ export function formatErrorStack(errorStack:cs.FfArray<StackItem>, options?:Stac
         if (!options.filterFunc(item))
           continue;
 
-      result += indent + arrow + formatStackItem(item) + '\n';
-
+      let resultLine = '';
       if (line > 0)
-        indent += ' ';
-      arrow = '⮡ ';
+        resultLine += ' '.repeat(line-1) + '⮡ ';
+      resultLine += getCodeLocation(item);
+
+      if (line == 0) {
+        resultLine += '    ';
+        lastFunctionStart = resultLine.length-2;
+      } else {
+        let indent = (lastFunctionStart - resultLine.length);
+        if (indent > 0) {
+          resultLine += ' '.repeat(indent+1);
+        }
+        lastFunctionStart = resultLine.length;
+        resultLine += ' ⮡ ';
+      }
+      resultLine += getFunctionName(item);
+
+      result += resultLine + '\n';
+
       line++;
     }
   }
@@ -272,26 +341,50 @@ try {
   }
 }
 
-export function getCallerLocation(levelsAbove:number = 1):StackItem|undefined {
+/**
+ * gets the code location that called your function.
+ * ```
+ * ```
+ * if this is the contents of this module: myModule.ts
+ * ```txt
+ * 1 |function whereIsThisCall():string {
+ * 2 |  let {originalLocation} = es.getCallerLocation();
+ * 3 |  return `
+ * 4 |    The place in the code that called whereIsThisCall() is located here:
+ * 5 |    file: ${originalLocation.file} at line: ${originalLocation.line}`
+ * 6 |  `;
+ * 7 |}
+ * 8 |
+ * 9 |console.log(whereIsThisCall());
+ * ```
+ * then this will output:
+ * ```txt
+ *     The place in the code that called whereIsThisCall() is located here:
+ *     file: ./src/myModule.ts at line: 9
+ * ```
+ * however, if you need the parent caller location, pass the number 1 to get the
+ * caller's caller, and 2 to get the caller's caller's caller, and so on.
+ */
+export function getCallerLocation(parentCallerLevel:number = 0):StackItem|undefined {
   try {
     throw new Error()
   } catch (e:unknown) {
     if (e instanceof Error) {
 
-      /**
-       * the following unused assignment is important, because `prepareStackTrace` only gets called (and therefore an
-       * Error.unmappedStack gets created) if e.stack is referenced.
-       */
+
+      // the following unused assignment is important, because `prepareStackTrace` only gets called (and therefore an
+      // Error.unmappedStack gets created) if e.stack is referenced.
       let stack = e.stack;
 
       let mappedStack = getMappedStack((e as any).unmappedStack);
-      /**
-       * we skip [0] which is the new Error() call in the try of this function,
-       * we also skip [1] which is the call to `getCallerLocation()`
-       * using [2] gets us the location that actually called the thing that has the getCallerLocation()
-       * using [3] would be the thing that called the thing.. etc.
-       */
-      return (mappedStack ?? [])[levelsAbove + 1];
+
+      // we skip mappedStack[0] because it represents the `throw new Error()` line in the try of this function,
+      // mappedStack[1] would be the caller location
+      // mappedStack[2] gets us the location of the caller that called the caller (the parent caller)
+      // mappedStack[3] would be the location that called that, etc.
+      let itemIndex = 1 + parentCallerLevel;
+
+      return (mappedStack ?? [])[itemIndex];
     }
   }
 }

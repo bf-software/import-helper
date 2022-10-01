@@ -633,6 +633,16 @@ export abstract class FfBaseMap<K,V,F extends FfBaseMapFound<K,V>,FI extends FfB
   }
 
   /**
+   * returns the value for the provided key.  If the key is not found, this throws an error.
+   */
+  protected byExistingKey(key:K, keyName:string='key'):F {
+    let value = this.get( key );
+    if (typeof value == 'undefined' || value == null)
+      throw new Error(`${keyName} not found: ${key}`);
+    return new this.foundClass(key, value);
+  }
+
+  /**
    * sequentially searches the map for the value
    */
   protected byValue(value:V):FI | undefined {
@@ -787,6 +797,11 @@ export class FfMap<K,V> extends FfBaseMap<K, V, FfMapFound<K,V>, FfMapFoundIndex
   public byValue(value:V):FfMapFoundIndex<K,V> | undefined {
     return super.byValue(value);
   }
+
+  public byExistingKey(key:K, keyName:string='key'):FfMapFound<K,V> {
+    return super.byExistingKey(key, keyName);
+  }
+
   /**
    * finds the key and returns the value and index.  Note: this is slower than @function byKey() because it uses
    * a sequential search instead of a hash search.
@@ -855,6 +870,18 @@ export abstract class FfBaseIndexableKeyMap<K,V,F extends FfBaseMapFound<K,V>,FI
 
   public set comparator(value:ss.Comparator<K>) {
     this.keyArray.comparator = value;
+  }
+
+  /**
+   * gets the last item in the map.  This is faster than FfMap.last because it doens't have to iterate over the map to get the last item.
+   */
+  public get last():FI | undefined {
+    let lastKeyFound = this.keyArray.last;
+    if (lastKeyFound) {
+      let key = lastKeyFound.value;
+      let value = this.get(key)!;
+      return new this.foundClassIndex(key, value, lastKeyFound.index);
+    }
   }
 
 
@@ -969,6 +996,9 @@ export class FfOrderedMap<K,V> extends FfBaseOrderedMap<K, V, FfMapFound<K,V>, F
   public byKey(key:K):FfMapFound<K,V> | undefined {
     return super.byKey(key);
   }
+  public byExistingKey(key:K, keyName:string='key'):FfMapFound<K,V> {
+    return super.byExistingKey(key, keyName);
+  }
   public byValue(value:V):FfMapFoundIndex<K,V> | undefined {
     return super.byValue(value);
   }
@@ -1037,12 +1067,19 @@ export abstract class FfBaseSortedMap<K,V,F extends FfBaseMapFound<K,V>,FI exten
 
 }
 
+
+/**
+ * the order of the map is determined by the sort order of the keys.
+ */
 export class FfSortedMap<K,V> extends FfBaseSortedMap<K, V, FfMapFound<K,V>, FfMapFoundIndex<K,V>> {
   protected foundClass = FfMapFound;
   protected foundClassIndex = FfMapFoundIndex;
 
   public byKey(key:K):FfMapFound<K,V> | undefined {
     return super.byKey(key);
+  }
+  public byExistingKey(key:K, keyName:string='key'):FfMapFound<K,V> {
+    return super.byExistingKey(key, keyName);
   }
   public byValue(value:V):FfMapFoundIndex<K,V> | undefined {
     return super.byValue(value);
@@ -1807,6 +1844,3 @@ export class WeightedSort<T> {
   }
 
 }
-
-
-

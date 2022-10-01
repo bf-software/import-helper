@@ -3,7 +3,7 @@ import { ImportHelperApi, MessageStyle } from './importHelperApi';
 import * as ss from './common/systemSupport';
 import { cAppName } from './appSupport';
 import { PlainQuickPick, PlainQuickPickButtons } from './plainQuickPick';
-import { docs, EditorSearchSymbol } from './document';
+import { docs, Identifier } from './document';
 import { globals } from './common/vscodeSupport';
 import * as vs from './common/vscodeSupport';
 import * as qpi from './quickPickItems';
@@ -28,7 +28,7 @@ export class ImportHelperUi {
   private lastModuleSearchValue: string = '';
   private lastModuleSearchItemIndex: number = 0;
   private isFreshModuleSearch: boolean = false;
-  private editorSearchSymbol: EditorSearchSymbol | undefined;
+  private editorSearchSymbol: Identifier | undefined;
 
   constructor() {
 
@@ -198,12 +198,10 @@ export class ImportHelperUi {
 
       this.isFreshModuleSearch = true;
       if (mode == IHMode.addImport) {
-        this.editorSearchSymbol = this.api.getEditorSearchSymbol();
+        this.editorSearchSymbol = this.api.getEditorSearchIdentifier();
         let searchText = this.lastModuleSearchValue;
         if (this.editorSearchSymbol) {
           searchText = this.editorSearchSymbol.text;
-          if (this.editorSearchSymbol.isComplete)
-            searchText = '"'+searchText;
           if (this.editorSearchSymbol.isSymbol)
             searchText = '{'+searchText
           docs.active!.rememberPos('editorSearchSymbol',this.editorSearchSymbol.startPos);

@@ -221,7 +221,7 @@ export class SourceModules extends cs.FfMap<string,SourceModule> {
   public project: Project;
   private workspaceRoots:string[] = [];
 
-  private excludePaths:string[] = [];
+  private excludeNonRootPaths:string[] = [];
   private excludeRootPaths:string[] = [];
 
 	constructor(project: Project) {
@@ -261,9 +261,9 @@ export class SourceModules extends cs.FfMap<string,SourceModule> {
    * check if the file should be excluded based on the configuration's exclude paths.
    * This considers only the exclude paths that don't begin with a slash.
    */
-  public isExcludedByPaths(file:string):boolean {
+  public isExcludedByNonRootPaths(file:string):boolean {
     file = file.toLowerCase();
-    for (let path of this.excludePaths)
+    for (let path of this.excludeNonRootPaths)
       if (file.includes('/'+path+'/'))
         return true;
     return false;
@@ -294,7 +294,7 @@ export class SourceModules extends cs.FfMap<string,SourceModule> {
       this.workspaceRoots.length = 0;
 
     let excludePathsConfig:string = vscode.workspace.getConfiguration('import-helper.paths',docs.active?.vscodeDocument?.uri).get('exclude') ?? '';
-    this.excludePaths.length = 0;
+    this.excludeNonRootPaths.length = 0;
     this.excludeRootPaths.length = 0;
     let paths:string[] = excludePathsConfig.split(/(?<=[^\\]),\s*/);  // <-- matches ', ', or ',', but commas escaped with a backslash
     paths = paths.map( path => path.trim() );
@@ -302,7 +302,7 @@ export class SourceModules extends cs.FfMap<string,SourceModule> {
       if (path.startsWith('/'))
         this.excludeRootPaths.push(path.toLowerCase());
       else
-        this.excludePaths.push(path.toLowerCase());
+        this.excludeNonRootPaths.push(path.toLowerCase());
     }
   }
 
@@ -338,10 +338,12 @@ export class SourceModules extends cs.FfMap<string,SourceModule> {
       //     this.addByModuleFile( ss.internalizeFile(uri.fsPath ) );
     // }
 
-    let allExtensions = ss.commas(...as.cCodeExtensions,...as.cSvelteExtensions,...as.additionalExtensions);
-    let foundURIs = await vscode.workspace.findFiles('**/'+vs.getWorkspaceRelativePath(this.project.projectPath)+'**/*{'+allExtensions+'}', '**/{node_modules'+ss.prefix(',',ss.commas(this.excludePaths))+'}/**');
+    // note: any changes to the code that limits the files included should also be reflected in Project.moduleContentChanged
+    let allExtensions = ss.commas(...as.cCodeExtensions,...as.additionalExtensions);
+    // note: vscode.workspace.findFiles takes care of excluding the non-root paths.
+    let foundURIs = await vscode.workspace.findFiles('**/'+vs.getWorkspaceRelativePath(this.project.projectPath)+'**/*{'+allExtensions+'}', '**/{node_modules'+ss.prefix(',',ss.commas(this.excludeNonRootPaths))+'}/**');
     for (let uri of foundURIs)
-      if (! this.isExcludedByRootPaths( ss.internalizeFile(uri.fsPath) ) )
+      if (! this.isExcludedByRootPaths( ss.internalizeFile(uri.fsPath) ) ) // <-- exclude the root paths
         this.addByModuleFile( ss.internalizeFile(uri.fsPath ) );
 
   }
