@@ -8,6 +8,7 @@ import './common/quickTest.test';
 import './moduleParser.test';
 import './importStatementParser.test';
 import './token.test';
+import './appSupport.test';
 
 
 export async function run(): Promise<void> {

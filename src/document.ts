@@ -7,17 +7,6 @@ import * as as from './appSupport';
 import { Token, TK } from './token';
 
 
-/** represents a javascript/typescript identifier */
-export class Identifier {
-  /** text of the identifier */
-  public text:string = '';
-  /** indicates if the symbol under the cursor is definitely a symbol and not a module name or module alias */
-  public isSymbol: boolean = false;
-  /** position the identifier was found in the document */
-  public startPos: number|undefined;
-}
-
-
 export class Document {
   public module:Module | undefined;
   public project:Project | null = null;
@@ -108,40 +97,6 @@ export class Document {
     return this.vscodeTextEditor!.document.lineAt(this.vscodeTextEditor!.selection.active.line).text;
   }
 
-  /**
-   *  returns a symbol suitable for using as the default string in an Add Import module search
-   */
-  public getIdentifierUnderCursor(): Identifier | undefined {
-    let sourceLine = this.getCursorLineText();
-    let sourceLineStartPos = this.getCursorLineStartPos();
-    let lineCursorPos = this.cursorPosition.character;
-    let result = new Identifier();
-
-    // parse all the tokens and find the identifier under the cursor
-    let theIdentifier = '';
-    let token = new Token();
-    token.sourceCode = sourceLine;
-    token.getNext();
-    while (token.kind != TK.EndOfFileToken) {
-      if (token.kind == TK.Identifier) {
-        if (lineCursorPos >= token.startPos && lineCursorPos <= token.endPos+1) {
-          result.text = token.text;
-          result.startPos = sourceLineStartPos + token.startPos;
-          let followingCharacter = sourceLine.substr(token.sourcePos,1);
-          if (followingCharacter == '[' || followingCharacter == '(')
-            result.isSymbol = true;
-          break;
-        }
-      }
-      token.getNext();
-    }
-
-    if (result.text == '')
-      return;
-
-    return result;
-
-  }
 
   public getCursorLineStartPos(): number {
     let line = this.getCursorLine();

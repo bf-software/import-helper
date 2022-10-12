@@ -395,11 +395,14 @@ class Test extends ChildTestItem {
       let message;
       let stack;
       let unmappedStack:cs.FfArray<es.StackItem> | undefined;
+      let formatOptions:es.StackFormatOptions;
       if (this.isException) {
+        formatOptions = cQuickTestStackExceptionFormatOptions;
         stack = this.exceptionError!.stack; // <-- keep this ununsed assignment here, it allows es.getMappedStack() to get the stack.
         message = `${this.exceptionError!.name}: ${this.exceptionError!.message}\n`;
         unmappedStack = (this.exceptionError as any).unmappedStack;
       } else {
+        formatOptions = cQuickTestStackFormatOptions;
         stack = this.testValueError!.stack; // <-- keep this ununsed assignment here, it allows es.getMappedStack() to get the stack.
         message = this.testValueError!.message;
         unmappedStack = (this.testValueError as any).unmappedStack;
@@ -408,7 +411,7 @@ class Test extends ChildTestItem {
       let mappedStack = es.getMappedStack(unmappedStack);
       let codeLocation = es.getCodeLocation(this.codeFile, this.codeLineColumn);
       if (mappedStack && mappedStack.length)
-        result += this.indent(this.indent('at: ' + ch.grey(es.formatErrorStack(mappedStack,cQuickTestStackFormatOptions)), [0,4]), cIndentSizeInCharacters);
+        result += this.indent(this.indent('at: ' + ch.grey(es.formatErrorStack(mappedStack,formatOptions)), [0,4]), cIndentSizeInCharacters);
       else
         result += this.indent(this.indent('at: ' + ch.grey(codeLocation + '  |  note: error did not have a stack trace'), [0,4]), cIndentSizeInCharacters);
 
@@ -1083,12 +1086,21 @@ function log(s:string, options?:{endWithNewLine?:boolean}) {
   }
 }
 
+/**
+ * the idea is that
+ */
 const cQuickTestStackFormatOptions:es.StackFormatOptions = {
   startFunc:(item) => {
     return isTestExt(ss.extractFileExt(ss.removeFileExt(item.originalLocation?.file ?? '')));
   },
   filterFunc: (item) => {
     return ss.extractFileName(item.originalLocation?.file ?? '') != 'quickTest.ts';
+  }
+}
+
+const cQuickTestStackExceptionFormatOptions:es.StackFormatOptions = {
+  startFunc:(item) => {
+    return isTestExt(ss.extractFileExt(ss.removeFileExt(item.originalLocation?.file ?? '')));
   }
 }
 

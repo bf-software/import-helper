@@ -234,6 +234,14 @@ export abstract class FfBaseArray<V,F extends FfBaseArrayFound<V>> extends Array
     }
   }
 
+  public byFuncReverse( func: (value:V, index:number) => boolean ):F | undefined {
+    for (let index = this.length-1; index >= 0; index--) {
+      if (func(this[index], index))
+        return new this.foundClass(index, this[index]);
+    }
+  }
+
+
   protected byValue(value:V):F | undefined {
     return this.byFunc( (v) => v == value );
   }

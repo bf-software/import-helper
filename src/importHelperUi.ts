@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { ImportHelperApi, MessageStyle } from './importHelperApi';
 import * as ss from './common/systemSupport';
-import { cAppName } from './appSupport';
+import { cAppName, Identifier } from './appSupport';
 import { PlainQuickPick, PlainQuickPickButtons } from './plainQuickPick';
-import { docs, Identifier } from './document';
+import { docs } from './document';
 import { globals } from './common/vscodeSupport';
 import * as vs from './common/vscodeSupport';
 import * as qpi from './quickPickItems';
@@ -202,7 +202,7 @@ export class ImportHelperUi {
         let searchText = this.lastModuleSearchValue;
         if (this.editorSearchSymbol) {
           searchText = this.editorSearchSymbol.text;
-          if (this.editorSearchSymbol.isSymbol)
+          if (this.editorSearchSymbol.isDefinitelyASymbol)
             searchText = '{'+searchText
           docs.active!.rememberPos('editorSearchSymbol',this.editorSearchSymbol.startPos);
         }
