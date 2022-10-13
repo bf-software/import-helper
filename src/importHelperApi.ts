@@ -70,6 +70,7 @@ export class ImportHelperApi {
 	public mode:IHMode = IHMode.addImport;
 	public onGetSpecificFileChoice = new ss.Event<ProjectFileMap,string>();
   public onShowMessage = new ss.Event<{msg:string, style:MessageStyle}>();
+  public lastImportedIdentifier: string = '';
 
   public get isProjectSupported():boolean {
     if (!docs.active)
@@ -416,6 +417,8 @@ export class ImportHelperApi {
     let module = docs.active.module;
     let selectedQPI = (fromStep == 1 ? this.step1QPItem : this.step2QPItem)!;
 
+    this.lastImportedIdentifier = selectedQPI.importStatement.mainIdentifier;
+
     // check for existing statements
 		let existingStatement:ImportStatement | undefined;
 		for (let statement of module!.importStatements) {
@@ -466,6 +469,7 @@ export class ImportHelperApi {
     if (selectedQPI.importStatement.hasSymbols && selectedQPI.importStatement.symbols.items.length == 0) {
       await this.goUpToImports();
 		}
+
 
     // complete editor text
     if (editorSearchIdentifier) {
@@ -703,5 +707,16 @@ export class ImportHelperApi {
     }
   }
 
+
+  public async pasteLastIdentifier() {
+    if (!docs.active)
+      return;
+    if (this.lastImportedIdentifier == '')
+      return;
+
+    await docs.active.insertText(docs.active.cursorPos, this.lastImportedIdentifier);
+    docs.active.clearSelection(); // <-- insert text causes a selection to be created.
+
+  }
 
 }

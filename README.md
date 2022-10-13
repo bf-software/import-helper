@@ -152,14 +152,29 @@ lets you open a module's source code in the editor
 show a list of modules that use the selected module
 * `import-helper.showUnused`:\
 shows modules that are not referenced by your project code
+* `import-helper.pasteLastIdentifier`: ┊ `Alt+V (⌥V on Mac)`\
+pastes the last imported symbol, alias or module name into your code
 
 ## Release Notes
+
+### v1.1.2 - (Oct 20, 2022)
+
+new feature:
+* added the `pasteLastIdentifier` command.  After importing a symbol, or module, activate the Paste
+  Last Identifier command `Alt+V (⌥V on Mac)` to paste it into your code.
+
+small improvements:
+* the identifier under or to the left of the cursor is used as default search text. Ex. if the pipe |
+  is the cursor, `os. |` will now pick up "os" as the default search, whereas before the cursor would
+  have to have been touching "os" in order to pick it up.
+* when searching, typing a dot in the text will act as if it is a separate term. ex. `main.test` is
+  the same as `main .test`.
 
 ### v1.1.1 - (Oct 1, 2022)
 
 fixed issues:
 * when modules were created by a transpiler, Import Helper detected the new/updated files and inadvertently included them in its internal list of modules even if their folder was supposed to be excluded by the `Paths: exclude` setting.
-* when importing a symbol or module and it's identifier was under the cursor in the editor, it would sometimes be replaced/completed incorrectly.
+* when importing a symbol or module and its identifier was under the cursor in the editor, it would sometimes be replaced/completed incorrectly.
 * when importing svelte modules, the recommended default alias will now always start with an uppercase letter, even if the module name is lower case.
 
 

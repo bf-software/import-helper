@@ -3,7 +3,7 @@
 	"publisher": "bf-s",
 	"displayName": "Import Helper",
 	"description": "quickly import modules, aliases, and symbols via a search (for typescript, javascript, and svelte)",
-	"version": "1.1.1",
+	"version": "1.2.0",
 	"icon": "out-bundle/images/BF-Software/icon.png",
 	"engines": {
 		"vscode": "^1.64.0"
@@ -71,6 +71,10 @@
 			{
 				"command": "import-helper.openModule",
 				"title": "Import Helper: Open Module"
+			},
+			{
+				"command": "import-helper.pasteLastIdentifier",
+				"title": "Import Helper: Paste Last Identifier"
 			}
 		],
 		"keybindings": [
@@ -107,6 +111,10 @@
 			{
 				"command": "import-helper.showReferences",
 				"key": "Alt+R"
+			},
+			{
+				"command": "import-helper.pasteLastIdentifier",
+				"key": "Alt+V"
 			}
 		]
 	},

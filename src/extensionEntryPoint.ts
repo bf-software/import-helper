@@ -89,6 +89,9 @@ export function activate(context: vscode.ExtensionContext) {
 		 	addImportUI.showReferenecesKeyPressed();
 		}),
 
+		vscode.commands.registerCommand('import-helper.pasteLastIdentifier', () => {
+		 	addImportUI.pasteLastIdentifier();
+		}),
 
     vscode.workspace.onDidChangeTextDocument((event: vscode.TextDocumentChangeEvent) => {
 			docs.documentChanged(event);

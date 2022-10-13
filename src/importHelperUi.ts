@@ -408,5 +408,9 @@ export class ImportHelperUi {
     this.api.goBackDown();
   }
 
+  public pasteLastIdentifier() {
+    this.api.pasteLastIdentifier();
+  }
+
 
 }
