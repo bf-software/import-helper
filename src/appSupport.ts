@@ -130,6 +130,7 @@ import * as cs from './common/collectionSupport';
 import * as vscode from 'vscode';
 import { docs } from './document';
 import * as ns from './common/nodeSupport';
+import { Token, TK } from './token';
 export const cAppName = 'Import Helper';
 
 export const cGoToImportsPos = 'goToImports';
@@ -402,4 +403,65 @@ export function deriveModuleNameAlias(shortenedModuleName: string) {
   if ( as.cNonHiddenCodeExtensions.includes(ss.extractFileExt(shortenedModuleName)) )
     shortenedModuleName = ss.removeFileExt(shortenedModuleName);
   return as.makeValidSymbolName(shortenedModuleName);
+}
+
+
+
+/** represents a javascript/typescript identifier */
+export class Identifier {
+  /** text of the identifier */
+  public text:string = '';
+  /** represents a javascript/typescript identifier */
+  public isDefinitelyASymbol: boolean = false;
+  /** position the identifier was found in the document */
+  public startPos:number = 0;
+}
+
+
+/**
+ *  returns a symbol suitable for using as the default string in an Add Import module search
+ */
+export function getSearchIdentifierNearCursor(params:{
+  sourceLine: string,
+  sourceLineStartPos: number,
+  lineCursorPos: number
+}): Identifier | undefined {
+
+  // parse all the tokens and find the identifier under or to the left of the cursor
+  let theIdentifier = '';
+  let token = new Token();
+  let lastTokenKind = TK.Unknown;
+  let lastIdentifier = new Identifier();
+  let inLeftOfInstanceAssignmet = false;
+  token.sourceCode = params.sourceLine;
+  token.getNext();
+  while (token.kind != TK.EndOfFileToken) {
+    if ([TK.LetKeyword, TK.ConstKeyword, TK.VarKeyword].includes(token.kind)) {
+      inLeftOfInstanceAssignmet = true;
+    } else if (token.kind == TK.EqualsToken) {
+      inLeftOfInstanceAssignmet = false;
+    } else if (token.kind == TK.Identifier && !inLeftOfInstanceAssignmet) {
+      // determine if it's a good candidate.
+      let precedingCharacter = params.sourceLine.substr(token.sourcePos-token.text.length-1,1);
+      if (precedingCharacter != '.') {
+        lastIdentifier.text = token.text;
+        lastIdentifier.startPos = params.sourceLineStartPos + token.startPos;
+        lastIdentifier.isDefinitelyASymbol = false;
+        let followingCharacter = params.sourceLine.substr(token.sourcePos,1);
+        if (followingCharacter == '[' || followingCharacter == '(')
+          lastIdentifier.isDefinitelyASymbol = true;
+      }
+    }
+    if (params.lineCursorPos >= token.startPos && params.lineCursorPos <= token.endPos+1) {
+      break;
+    }
+    lastTokenKind = token.kind;
+    token.getNext();
+  }
+
+  if (lastIdentifier.text == '')
+    return;
+
+  return lastIdentifier;
+
 }

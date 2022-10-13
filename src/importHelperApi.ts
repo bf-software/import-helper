@@ -42,7 +42,7 @@ import { ModuleSymbol, ModuleSymbols } from './moduleSymbol';
 import { ModuleSearchTerms, SymbolSearchTerms, MTT, STT } from './searchTerms';
 import { PlainQuickPickItem } from './plainQuickPick';
 import { ProjectModuleResolver, ProjectFileMap } from './projectModuleResolver';
-import { Identifier } from './document';
+import { Identifier } from './appSupport';
 import { ReferenceCountQuickPickItem } from './quickPickItems';
 
 export const cReferenceCountSortWeight = 70;
@@ -260,21 +260,21 @@ export class ImportHelperApi {
   }
 
   /**
-   * when beginning a search, if the identifier under the cursor seems like it's there because the user
-   * is currently trying to import something they've just typed, then use the identifier as the search
-   * text.  If the user ends up importing that identifier, then the partial identifier should be
-   * automatically completed in the editor if it in fact was a partial identifier.
+   * when beginning a search, if the identifier under the cursor, or just to the left of the cursor
+   * seems like it's there because the user is currently trying to import something they've just
+   * typed, then use that identifier as the search text.  If the user ends up importing that
+   * identifier, it should automatically completed in the editor if it was partially typed.
    *
    * how this is done:
    *
    * firstly, if the line was not recently edited, this returns undefined and intructs the caller to
    * do nothing.
    *
-   * if the cursor is inside or to the immediate right of an identifier, it is returned along with the
+   * if the cursor is inside or to the right of an identifier, it is returned along with the
    * starting position of the identifier.
    *
    * Later, the caller will replace the identifier in the text editor if the imported identifier began with
-   * the identifier this returns.
+   * the identifier this returns (or vice versa: the imported identifier begins with the editor identifier).
    *
   */
   public getEditorSearchIdentifier(): Identifier | undefined {
@@ -285,10 +285,16 @@ export class ImportHelperApi {
       return;
     docs.active?.syncEditor();
     let line = docs.active.getCursorLine();
-	let lastChangedLine = docs.active.lastChangedLine;
+	  let lastChangedLine = docs.active.lastChangedLine;
     if (line != lastChangedLine)
       return;
-    return docs.active.getIdentifierUnderCursor();
+
+    return as.getSearchIdentifierNearCursor({
+      sourceLine: docs.active.getCursorLineText(),
+      sourceLineStartPos: docs.active.getCursorLineStartPos(),
+      lineCursorPos: docs.active.cursorPosition.character
+    });
+
   }
 
   /**

@@ -134,6 +134,7 @@ export function initEntryPoint(options?:InitEntryPointOptions) {
 export interface StackFormatOptions {
   startFunc?:(item:StackItem) => boolean;
   filterFunc?:(item:StackItem) => boolean;
+  stopFunc?:(item:StackItem) => boolean;
   showBootstrapStack?:boolean;
 }
 
@@ -214,26 +215,40 @@ export function getCodeLocation(itemOrCodeFile:StackItem|string, codeLineColumn:
 
 /**
  * returns each line of a stack trace as a `call tree` where the top represents the root and
- * additional lines represent the leaves:
+ * additional lines represent the leaves.  This is the opposite direction compared to the common way
+ * of formatting stacks, that is, the caller is listed first, then the callee is listed below that
+ * and so on. ex.
  * ```
- *../relative/path/to/file.ts:10:20    start()
- *⮡  ../relative/path/to/file.ts:10:20  ⮡ test()
- * ⮡  ../relative/path/to/file.ts:10:20  ⮡ getvalue()
- *  ⮡  ../relative/path/to/file.ts:10:20  ⮡ Converter.parse()
- *   ⮡  ../relative/path/to/a/long/file-name.ts:10:20  ⮡ calculate()
- *    ⮡  ../relative/short.ts:10:20                     ⮡ output()
- * ```
+ * /node_modules/node/nodeBoostrapCode.js:5:21    something()
+ * ⮡  /node_modules/node/nodeBoostrapCode.js:10:242  ⮡  anotherSomething()
+ *  ⮡  /src/yourEntryPoint.ts                         ⮡  yourMain()
+ *   ⮡  /src/yourLibrary.ts                            ⮡  yourFunction()
+ *    ⮡   /node_modules/someThirdPartyLibrary.js        ⮡  thirdPartyFunction()
+ *     ⮡   /node_modules/anotherThirdPartyLibrary.js     ⮡  anotherThirdPartyFunction()
  *
  * the first line of the stack represents the entry point into the app. Subequent lines indicate
  * additional calls in the call tree.  The last line represents the final call in the call
- * tree--usually the one that caused the error.
+ * tree--usually the one that actually threw the error.
  *
  * the file names are uniformly indented, with each subequent line becoming indented by one
  * character.
  *
- * the function calls will be indented the same way as long as the line above allows it.  If the
+ * the function calls are also indented the same way as long as the line above allows it.  If the
  * file path of the line above is very long, the indent of the function call will be pushed outward
  * so that subsequent functions are never indented less then the calling function.
+ *
+ * note that in any call stack there are items that are of little interest to the developer. Usually the
+ * "bootstrap" code shows internal junk that the developer has no control over.  Additionally, the
+ * particulars about errors thrown inside third party libraries may not be all that useful. Use the
+ * `options` parameter to control what is shown in the formatted stack.
+ *
+ * @param errorStack a stack preformatted by getMappedStack().  Stack arrays are always in reverse
+ * call order -- which is the way javascript creates them. i.e., with the last call on top of the
+ * stack and the first call on the bottom. (The opposite of the format order.)
+ *
+ * @param options a list of options that control where the error stack starts and ends, and provides
+ * the ability to filter the stack.
+ *
  */
 export function formatErrorStack(errorStack:cs.FfArray<StackItem>, options?:StackFormatOptions):string {
   options = options ?? {};
@@ -243,13 +258,13 @@ export function formatErrorStack(errorStack:cs.FfArray<StackItem>, options?:Stac
   let result = '';
 
   if (options?.startFunc) {
-    let startFound = errorStack.byFunc( options.startFunc );
+    let startFound = errorStack.byFuncReverse( options.startFunc );
     if (startFound)
       found = startFound;
   } else if (!options.showBootstrapStack) {
     if (settings.postBootstrapEntryPointFile == '')
       result += '{showing bootstrap code in stack -- use initEntryPoint() to hide}\n';
-    let startFound = errorStack.byFunc( (item) => (item.originalLocation?.file ?? item.file) == settings.postBootstrapEntryPointFile );
+    let startFound = errorStack.byFuncReverse( (item) => (item.originalLocation?.file ?? item.file) == settings.postBootstrapEntryPointFile );
     if (startFound)
       found = startFound;
   }
@@ -262,6 +277,10 @@ export function formatErrorStack(errorStack:cs.FfArray<StackItem>, options?:Stac
       if (options?.filterFunc)
         if (!options.filterFunc(item))
           continue;
+
+      if (options?.stopFunc)
+        if (!options.stopFunc(item))
+          break;
 
       let resultLine = '';
       if (line > 0)
