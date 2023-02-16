@@ -7,6 +7,28 @@ qt.module( () => {
 
   qt.section('strings', () => {
 
+    qt.section('indexToCoorinates()', () => {
+      qt.test('simple', () => {
+        // 0123456789
+        let s = L`
+          |line one
+          |line two
+          |line 3
+        `;
+        let c = ss.positionToLineColumn(s,0);
+        qt.testValue(c).shouldDeepEqual({line: 0, column: 0});
+        c = ss.positionToLineColumn(s,7);
+        qt.testValue(c).shouldDeepEqual({line: 0, column: 7});
+        c = ss.positionToLineColumn(s,9);
+        qt.testValue(c).shouldDeepEqual({line: 1, column: 0});
+        c = ss.positionToLineColumn(s,18);
+        qt.testValue(c).shouldDeepEqual({line: 2, column: 0});
+        c = ss.positionToLineColumn(s,19);
+        qt.testValue(c).shouldDeepEqual({line: 2, column: 1});
+      });
+    });
+
+
     qt.section('strToLines()', () => {
 
       qt.test('multi line with last line having no newline', () => {
@@ -231,6 +253,21 @@ qt.module( () => {
 
     });
 
+    qt.test('formatCsvValue()', () => {
+
+      qt.testValue(ss.formatCsvValue(`test`)).shouldEqual('test');
+
+      qt.testValue(ss.formatCsvValue(L`
+        1
+        2
+        3
+      `)).shouldEqual('"1\n2\n3\n"');
+
+      qt.testValue(ss.formatCsvValue(`Jimmy "Jimbo" Jones`)).shouldEqual('"Jimmy ""Jimbo"" Jones"');
+
+      qt.testValue(ss.formatCsvValue(`one, two, three`)).shouldEqual('"one, two, three"');
+
+    });
 
   });
 
@@ -277,86 +314,20 @@ qt.module( () => {
 
 
 
-  qt.section('Event class', () => {
 
-    qt.test('using return', () => {
-      let onEvent = new ss.Event<string,string>();
-      onEvent.do((s)=>{
-        return s+'!';
-      });
-      qt.testValue( onEvent.cue('hi') ).shouldEqual('hi!');
+  qt.section('math', async () => {
+    qt.test('wrapNumber', async () => {
+      qt.testValue( ss.wrapNumber(1, 1, 10) ).shouldEqual(1);
+      qt.testValue( ss.wrapNumber(5, 1, 10) ).shouldEqual(5);
+      qt.testValue( ss.wrapNumber(10, 1, 10) ).shouldEqual(10);
+      qt.testValue( ss.wrapNumber(11, 1, 10) ).shouldEqual(1);
+      qt.testValue( ss.wrapNumber(15, 1, 10) ).shouldEqual(5);
+      qt.testValue( ss.wrapNumber(7, 0, 6) ).shouldEqual(0);
+      qt.testValue( ss.wrapNumber(-2, 0, 6) ).shouldEqual(5);
+      qt.testValue( ss.wrapNumber(12, 1, 5) ).shouldEqual(2); // because 6=1, 10=5, 11=1, 12=2,
     });
-
-    qt.test('using e.result', () => {
-      let onEvent = new ss.Event<string,string>();
-      onEvent.do((s, e)=>{
-        e.result = s+'!';
-      });
-      qt.testValue( onEvent.cue('hi') ).shouldEqual('hi!');
-    });
-
-    qt.test('multiple listeners', () => {
-      let onEvent = new ss.Event<string,string>();
-      onEvent.do((s, e)=>{
-        e.result += '!';
-      });
-        onEvent.do((s, e)=>{
-        e.result += '?';
-      });
-      qt.testValue( onEvent.cue('hi','wow') ).shouldEqual('wow!?');
-    });
-
-    qt.test('multiple listeners, with stop', () => {
-      let onEvent = new ss.Event<string,string>();
-      onEvent.do((s, e)=>{
-        e.result += '!';
-        e.stopCues();
-      });
-        onEvent.do((s, e)=>{
-        e.result += '?';
-      });
-      qt.testValue( onEvent.cue('hi','wow') ).shouldEqual('wow!');
-    });
-
-    qt.test('multiple listeners, with cancel', () => {
-      let onEvent = new ss.Event<string,string>();
-      onEvent.do((s, e)=>{
-        e.result += '!';
-      });
-        onEvent.do((s, e)=>{
-        e.result += '?';
-        e.cancelEvent();
-      });
-      qt.testValue( onEvent.cue('hi','wow') ).shouldEqual('wow');
-    });
-
-    qt.test('multiple asynchronous listeners (no await)', () => {
-      let onEvent = new ss.Event<string,string>();
-      onEvent.do(async (s, e)=>{
-        await ss.sleep(100);
-        e.result += '!';
-      });
-        onEvent.do(async (s, e)=>{
-        await ss.sleep(100);
-        e.result += '?';
-      });
-      qt.testValue( onEvent.cue('hi','wow') ).shouldEqual('wow');
-    });
-
-    qt.test('multiple real asynchronous listeners (with await)', async () => {
-      let onEvent = new ss.Event<string,string>();
-      onEvent.do(async (s, e)=>{
-        await ss.sleep(100);
-        e.result += '!';
-      });
-        onEvent.do(async (s, e)=>{
-        await ss.sleep(100);
-        e.result += '?';
-      });
-      qt.testValue( await onEvent.cueAsync('hi','wow') ).shouldEqual('wow!?');
-    });
-
-
   });
+
+
 
 });

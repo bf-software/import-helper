@@ -6,7 +6,7 @@
  * module specifiers indicate the location of a module.  Since Import Helper has slightly expaned the
  * meaning of "module" to include anything that an import statement can import, "module specifier"
  * actually means the location of anything an import statement can import.  A file containing actual
- * javascript code will be referred to as a "code module".
+ * javascript/typescript/svelte code will be referred to as a "code module".
  *
  * module specifiers are the things inside the quotes in the example below:
  * ```
@@ -21,7 +21,7 @@
  * notice that multiple module specifiers can point to the same physical module, but have different ways
  * of getting there.  The differences come in two forms:
  * 1. path type differences
- * 2. ending differences
+ * 2. file name ending differences
  *
  * 1. path type differences:
  *   a. absolute: `'/not/common/myRootModule'` - this is not used in actual import statements found in js/ts project code,
@@ -29,30 +29,30 @@
  *   b. relative to importing module: ex. '../myModule.js'
  *   c. relative to XXconfig.json: relative to tsconfig.json-->baseURL, or tsconfig.json-->paths: ex. 'common/commonModule.js'
  *   d. relative to node_modules: ex. 'electron'
- *      (c. & d. are referred to as "non-relative" by official typescript docs. Perhaps a better term would be "base-relative".)
+ *      (c. & d. are referred to as "non-relative" paths by official typescript docs. Perhaps a better term would be "searchable path".)
  *
- * 2. ending differences:
- *   a. shortened: this is when the ending has its code extensions removed (like, `.ts, .js, .tsx, .jsx, etc.`) and has the
+ * 2. file name ending differences:
+ *   a. shortened: this is when the file name has its code file extension removed (like, `.ts, .js, .tsx, .jsx, etc.`) and has the
  *      `/index` removed if it was present.  For example, `./yetAnotherModule/index.js` can be shortened to `./yetAnotherModule`
  *   b. non-shortened: this when all endings are included for code modules. Note that non-code modules like
  *      `.css, .png, .ttf, etc.` will never be shortened.
  *
- * Import Helper handles many forms of module specifiers, therefore variable naming for those specifiers are as follows:
+ * Import Helper handles many forms of module specifiers, therefore variable naming conventions in the source code for those specifiers are as follows:
  *
- * - `anyModuleSpecifier`: can contain any module specifier; it may be relative or absolute, and shortened or non-shortened
+ * - `anyModuleSpecifier`: can contain any module specifier; it may be relative, searchable or absolute, and shortened or non-shortened
  *
- * - `absoluteModuleSpecifier`: a non-shortened specifier ex. `c:/myProject/src/myModule.js`,
+ * - `absoluteModuleSpecifier`: a fully absolute & non-shortened specifier ex. `c:/myProject/src/myModule.js`,
  *
  * - `nodeRelativeModuleSpecifier`: a non-shortened specifier relative to node_modules ex. `electron`
  *
  * - `universalPathModuleSpecifier`: non-shortened specifier containing either an absoluteModuleSpecifier or a nodeRelativeModuleSpecifier
  *
- * - `absoluteShortenedModuleSpecifier`: strictly adheres to its name: ex. `c:/myProject/src/myModule` or 'c:/myProject/src/styles.css'
+ * - `absoluteShortenedModuleSpecifier`: absolute, but shortened if possible: ex. `c:/myProject/src/myModule` or 'c:/myProject/src/styles.css'
  *
- * - `nodeRelativeShortenedModuleSpecifier`: strictly adheres to its name: ex. `electron`, Note that extensions are rarely used (if ever)
+ * - `nodeRelativeShortenedModuleSpecifier`: nodeRelative, and shortened: ex. `electron`, Note that extensions are rarely used (if ever)
  *   to refer to modules inside node_module packages, but this allows for the possibility just in case.
  *
- * - `universalPathShortenedModuleSpecifier`: strictly adheres to its name: ex. `c:/myProject/src/myModule` or 'electron'
+ * - `universalPathShortenedModuleSpecifier`: the best definitive path to the module -- and shortened ex. `c:/myProject/src/myModule` or 'electron'
  *
  */
 
@@ -133,7 +133,7 @@ import * as ns from './common/nodeSupport';
 import { Token, TK } from './token';
 export const cAppName = 'Import Helper';
 
-export const cGoToImportsPos = 'goToImports';
+export const cGoToImportsBodyPos = 'goToImportsBodyPos';
 export const cLastImportPos = 'lastImportPos';
 
 export const cJavascriptExtensions = new cs.FfArray(
@@ -206,8 +206,20 @@ export function isAdditionalExtensionFile(fileOrFileName: string): boolean {
   return Boolean( additionalExtensions.byFunc( ext => fileOrFileName.endsWith(ext) )  );
 }
 
+/**
+ * @path path for the "folder" of settings in the vscode config file. ex. 'import-helper.extensions'
+ * @setting the actual setting item. ex. 'additional'
+ * @defaultValue return this if the setting doesn't exist
+ * @uri context for the setting (for example, .ts files may have different settings than .css files) the currently active document is used if not specified
+ */
+export function getSetting<T>(path:string, setting:string, defaultValue:T, uri?:vscode.Uri):T {
+  if (!uri)
+    uri = docs.active?.vscodeDocument?.uri;
+  return vscode.workspace.getConfiguration(path,uri).get<T>(setting) ?? defaultValue;
+}
+
 export function initConfiguration() {
-  let additionalExtensionsSetting = vscode.workspace.getConfiguration('import-helper.extentions',docs.active?.vscodeDocument?.uri).get<string>('additional') ?? '';
+  let additionalExtensionsSetting = getSetting('import-helper.extensions','additional','');
   let additionalExtensionsArray = additionalExtensionsSetting.split(',');
   additionalExtensionsArray = additionalExtensionsArray.map( ext => ss.prefix('.',ss.removePrefix( ext.trim() ,'.')));
   additionalExtensions = new cs.FfArray(...additionalExtensionsArray);
@@ -215,11 +227,11 @@ export function initConfiguration() {
 
 /**
  * since module specifiers can be shortened to omit any code extensions or the use of /index, this class is used to store them in their shortened
- * form.  Most of the time, import statements use shortened specifiers therefore we'll have to look them up in our internal list of specifiers without
- * extensions. Therefore we always shorten specifiers before storing them, that way our data contains the least common denominator for searching.
+ * form.  Most of the time, import statements use shortened specifiers and therefore we'll have to look them up in our internal list of specifiers without
+ * extensions. So, we always shorten specifiers before storing them, that way our data contains the least common denominator for searching.
  *
  * @member shortenedModuleSpecifier does not include `/index` or code file extensions such as `.js, .ts,` etc.  It will include any extensions
- * used by other files, such as .css, .png, .ttf, etc.  "Shortened" only pertains to the ending of the specifier, not the path part.
+ * used by other files, such as .css, .png, .ttf, etc.  Important: "shortened" only pertains to the ending of the specifier, not the path part.
  * @member ext contains the code file extension for code files (`.js, .ts,` etc.)
  * @member usesIndex indicates if the specifier uses a `/index`. (/lib/numberSupport/index.js)
  */
@@ -390,6 +402,9 @@ export async function getNodeModulePaths(importingModuleFile: string) {
   }
   return result;
 }
+
+
+
 
 export function extractCodeExt(file: string) {
   for (let ext of cCodeExtensions) {

@@ -79,6 +79,8 @@ import * as vs from './common/vscodeSupport';
 import * as cs from './common/collectionSupport';
 import * as as from './appSupport';
 import { ImportKind } from './importStatementParser';
+import * as nodePath from 'path';
+import * as ns from './common/nodeSupport';
 
 
 /**
@@ -105,6 +107,7 @@ export abstract class ProjectModule {
   private _isCode: boolean = false;
   private _codeModuleHasIndex: boolean = false;
   private _symbolQuality:number = 0;
+  public lastUsedDate: Date | undefined;
 
   /** indicates that this is a code module (`.ts, .tsx, .js, .jsx, .svelte etc.`) */
   public get isCode(): boolean {
@@ -293,7 +296,7 @@ export class SourceModules extends cs.FfMap<string,SourceModule> {
     else
       this.workspaceRoots.length = 0;
 
-    let excludePathsConfig:string = vscode.workspace.getConfiguration('import-helper.paths',docs.active?.vscodeDocument?.uri).get('exclude') ?? '';
+    let excludePathsConfig:string = as.getSetting('import-helper.paths','exclude','');
     this.excludeNonRootPaths.length = 0;
     this.excludeRootPaths.length = 0;
     let paths:string[] = excludePathsConfig.split(/(?<=[^\\]),\s*/);  // <-- matches ', ', or ',', but commas escaped with a backslash
@@ -350,6 +353,19 @@ export class SourceModules extends cs.FfMap<string,SourceModule> {
 
 }
 
+async function getSubModules(packageJsonFile:string) {
+  let result:string[] = [];
+  let json = await ns.readStringFromFile(packageJsonFile);
+  let packageObject = JSON.parse(json);
+  let exports = packageObject.exports;
+  if (typeof exports == 'object') {
+    for (let item in exports) {
+      if (item.startsWith('./') && typeof exports[item]['types'] == 'string')
+        result.push(item.substring(2));
+    }
+  }
+  return result;
+}
 
 
 export class NodeModule extends ProjectModule {
@@ -396,6 +412,9 @@ export class NodeModules extends cs.FfMap<string,NodeModule> {
    * used when opening Import Helper to load a list of modules on the fly
    */
   public async load( tempInsertPos:number, onLoadingMilestone:(finalMilestone?:boolean)=>void ): Promise<void> {
+    if (!this.project)
+      throw new Error('NodeModules.load(): NodeModules.project must be assigned.');
+
     if (this.isLoading)
       return;
     this.isLoading = true;
@@ -414,6 +433,24 @@ export class NodeModules extends cs.FfMap<string,NodeModule> {
           let nodeModule = new NodeModule(this);
           nodeModule.universalPathModuleSpecifier = (typeof comp.label == 'string' ? comp.label : comp.label.label);
           this.set(nodeModule.universalPathShortenedModuleSpecifier,nodeModule);
+        }
+      }
+
+      // however, sometimes vscode does not offer all of the node_modules that are available to be imported, and we need to dig deeper for certain modules.
+      for (let [module] of this) {
+        if (!module.includes('/')) {
+          for (let nodeModulesPath of this.project.nodeModulesPaths) {
+            let packageJson = `${nodeModulesPath}${module}/package.json`;
+            if (await ns.fileExists(packageJson)) {
+              let subModules = await getSubModules(packageJson);
+              for (let subModule of subModules) {
+                let nodeModule = new NodeModule(this);
+                nodeModule.universalPathModuleSpecifier = module+'/'+subModule;
+                this.set(nodeModule.universalPathShortenedModuleSpecifier,nodeModule);
+              }
+            }
+            break; // <-- found the package.json
+          }
         }
       }
 

@@ -18,8 +18,9 @@ qt.module( () => {
     let module = createModule();
     module.sourceCode = code;
     await module.scan();
-    qt.testValue(module.nextImportInsertPos).shouldEqual(pos);
-    qt.testValue(module.nextImportNewlinesBefore).shouldEqual(expectedNewlines);
+    let importSection = module.selectedImportSection;
+    qt.testValue(importSection.nextImportInsertPos).shouldEqual(pos);
+    qt.testValue(importSection.nextImportNewlinesBefore).shouldEqual(expectedNewlines);
   }
 
   qt.test('find the position of the first and last imports', async () =>{
@@ -28,8 +29,9 @@ qt.module( () => {
                        //01234567890 123456789012345 678901234567890 12345678901234567890
     module.sourceCode = '// comment\nimport "this";\nimport "that";\nlet x = 1;';
     await module.scan();
-    qt.testValue(module.importsStartPos).shouldEqual(11);
-    qt.testValue(module.importsEndPos).shouldEqual(39);
+    let importSection = module.selectedImportSection;
+    qt.testValue(importSection.importsStartPos).shouldEqual(11);
+    qt.testValue(importSection.importsEndPos).shouldEqual(39);
   });
 
   qt.test('should be the first line if there are no comments', async () =>{
@@ -73,12 +75,80 @@ qt.module( () => {
       |  import { one, two } from 'test';
     `;
     module.isSvelte = true;
+    module.currentCursorPos = 0;
     await module.scan();
-    let s = ss.splice(module.sourceCode, module.nextImportInsertPos, 0, '\n'.repeat(module!.nextImportNewlinesBefore) + module!.importIndentCharacters + `import {three} from 'test';`);
-    qt.testValue(s).shouldEqual(L`
+    let importSection = module.selectedImportSection;
+    let s = ss.splice(module.sourceCode, importSection.nextImportInsertPos, 0, '\n'.repeat(importSection.nextImportNewlinesBefore) + importSection.importIndentCharacters + `import { three } from 'test2';`);    qt.testValue(s).shouldEqual(L`
       |<script>
       |  import { one, two } from 'test';
-      |  import {three} from 'test';
+      |  import { three } from 'test2';
+    `);
+  });
+
+  qt.test('adds new indented import to the upper script tag', async () => {
+    let module = createModule();
+    module.sourceCode = L`
+      <script context="module">
+        import { one, two } from 'test';
+      </script>|
+
+      <script>
+        import { a, b } from 'test';
+      </script>
+    `;
+    module.isSvelte = true;
+    module.currentCursorPos = module.sourceCode.indexOf('|');
+    module.sourceCode = ss.splice(module.sourceCode, module.currentCursorPos,1,'');
+    await module.scan();
+    let importSection = module.selectedImportSection;
+    let s = ss.splice(module.sourceCode, importSection.nextImportInsertPos, 0, '\n'.repeat(importSection.nextImportNewlinesBefore) + importSection.importIndentCharacters + `import { three } from 'test2';`);
+    qt.testValue(s).shouldEqual(L`
+      <script context="module">
+        import { one, two } from 'test';
+        import { three } from 'test2';
+      </script>
+
+      <script>
+        import { a, b } from 'test';
+      </script>
+    `);
+  });
+
+
+
+  qt.test('adds new indented import to the lower script tag', async () => {
+    let module = createModule();
+    module.sourceCode = L`
+      <script context="module">
+        import { one, two } from 'test';
+      </script>
+
+      <script>
+        import { a, b } from 'test';|
+      </script>
+    `;
+    module.isSvelte = true;
+    module.currentCursorPos = module.sourceCode.indexOf('|');
+    module.sourceCode = ss.splice(module.sourceCode, module.currentCursorPos,1,'');
+    await module.scan();
+    let importSection = module.selectedImportSection;
+    let s = ss.splice(
+      module.sourceCode,
+      importSection.nextImportInsertPos,
+      0,
+      '\n'.repeat(importSection.nextImportNewlinesBefore) +
+        importSection.importIndentCharacters +
+        `import { three } from 'test2';`
+    );
+    qt.testValue(s).shouldEqual(L`
+      <script context="module">
+        import { one, two } from 'test';
+      </script>
+
+      <script>
+        import { a, b } from 'test';
+        import { three } from 'test2';
+      </script>
     `);
   });
 

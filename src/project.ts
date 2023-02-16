@@ -75,6 +75,12 @@ import { docs } from './document';
 import * as ns from './common/nodeSupport';
 import { ProjectModuleResolver } from './projectModuleResolver';
 
+
+export interface UniversalPathModuleSpecifierResult {
+  universalPathModuleSpecifier:string,
+  sourceModule?:SourceModule,
+}
+
 /**
  * contains all of the details pertaining to a project, such as configuration info from `package.json`,
  * `tsconfig.json`, and `jsconfig.json` as well as details about all of the modules available in the project.
@@ -127,7 +133,7 @@ export class Project {
 
   /**
    * all of the "source modules" available in the project., which is more than just code modules.  Anything that can be imported
-   * using import statements are considered "source modules". However, these are separate from node_module modules.
+   * using import statements are considered "source modules". However, these are separate from `node_module` modules.
    * This map is keyed on the lowercase {@link SourceModule.universalPathModuleSpecifier} of the module.  For non-code importable files,
    * like .css, .ttf, .png, etc. that is simply the absolute path and file name for the file.  For (code) modules, like .ts, .js, .jsx,
    * etc. that is the absolute path to the file, but the file name is shortened by removing the extension and `/index` if it exists. The
@@ -280,6 +286,10 @@ export class Project {
     }
   }
 
+  /**
+   * uses tsconfig.json's paths to see if an absoluteModuleSpecifier can be shortened into
+   * using one of those paths.
+   */
   public getModuleSpecifierBasedOnPaths(absoluteModuleSpecifier:string):string {
     let result = '';
     if (this.config) {
@@ -298,9 +308,9 @@ export class Project {
   /**
    * finds an appropriate moduleSpecifier for an absolute module specifier.  This basically reverses typescript's module resolution algorithm.
    * First check the `absoluteModuleSpecifier` to see if:
-   * 1. any paths match, then calculate the "non-relative" path based on the found path and wildcard substitutions
-   * 2  the baseUrl matches, then use a "non-relative" path (which is actually relative to the baseUrl)
-   * 3. any rootDirs match, then use a realtive path as if the imported module resides in the same folder as importing module
+   * 1. any paths match, then calculate the searchable path (aka "non-relative path") based on the found path and wildcard substitutions
+   * 2  the baseUrl matches, then use a searchable path (which is actually relative to the baseUrl)
+   * 3. any rootDirs match, then use a relative path as if the imported module resides in the same folder as importing module
    * 4. all else fails, use a relative path from the importing module to the imported module
    */
   public getBestShortenedModuleSpecifier(importingModule: Module, absoluteSortenedModuleSpecifier: string): string {
@@ -310,6 +320,9 @@ export class Project {
       if (this.config.rootDirs.inVirtualDirectory(importingModule.path))
         if (this.config.rootDirs.inVirtualDirectory(absoluteSortenedModuleSpecifier))
           return this.config.rootDirs.resultingVirtualModuleSpecifier;
+
+    // first we'll get all the possible module specifier paths available to us. Then later on in this function,
+    // we'll sort out which path we'll actually use based on various preferences.
 
     // get the specifier based on `tsconfig.paths`.
     let basedOnPaths = this.getModuleSpecifierBasedOnPaths(absoluteSortenedModuleSpecifier);
@@ -323,19 +336,25 @@ export class Project {
 
     // from vscode settings:
     // Preferred path style for auto imports.
-    //  - shortest: Prefers a non-relative import only if one is available that has fewer path segments than a relative import.
+    //  - shortest: Prefers a non-relative (searchable path) import only if one is available that
+    //      has fewer path segments than a relative import.
     //  - relative: Prefers a relative path to the imported file location.
-    //  - non-relative: Prefers a non-relative import based on the `baseUrl` or `paths` configured in your `jsconfig.json` / `tsconfig.json`.
-    //  - project-relative: Prefers a non-relative import only if the relative import path would leave the package or project directory. Requires using TypeScript 4.2+ in the workspace.
+    //  - non-relative: Prefers a non-relative (searchable path) import based on the `baseUrl` or
+    //      `paths` configured in your `jsconfig.json` / `tsconfig.json`.
+    //  - project-relative: Prefers a non-relative (searchable path) import only if the relative
+    //      import path would leave the package or project directory. Requires using TypeScript 4.2+
+    //      in the workspace.
 
     // addition import-helper option:
     //  - non-relative-unless-same:
-    //       Prefers a non-relative import, except when the importing module and imported module are in the same non-relative hierarchy.
-    //       ex. if paths = ['*', '@bf-s/*'], then modules inside of '@bf-s/' hierarchy will use relative imports, but things outside of @bf-s
-    //       will use non-relative paths to import @bf-s modules.
+    //      Prefers a non-relative (searchable path) import, except when the importing module and
+    //      imported module are in the same non-relative (searchable path) hierarchy. ex. if paths
+    //      = ['*', '@bf-s/*'], then modules inside of '@bf-s/' hierarchy will use relative
+    //      imports, but things outside of @bf-s will use non-relative paths (searchable paths) to
+    //      import @bf-s modules.
 
     let pathStyle = '';
-    let importHelperPathStyle = vscode.workspace.getConfiguration('import-helper.moduleSpecifier',docs.active?.vscodeDocument?.uri).get<string>('pathStyle') ?? '';
+    let importHelperPathStyle = as.getSetting('import-helper.moduleSpecifier','pathStyle','');
     if (importHelperPathStyle == '' || importHelperPathStyle == 'use-vscode-settings')
       pathStyle = docs.active!.pathStyle;
     else
@@ -363,9 +382,12 @@ export class Project {
         return basedOnRelative;
 
     } else {
-      // we'll use import helper's non-relative-except style
-      let importingBasedOnPaths = this.getModuleSpecifierBasedOnPaths(importingModule.file);
-      if (basedOnPaths != '' && ns.getFirstFolderName(basedOnPaths) != ns.getFirstFolderName(importingBasedOnPaths))
+      // we'll use import helper's "non-relative-except" style
+      // step one: get the importing module's module specifier based on tsconfig's paths.
+      let importingModuleSpecBasedOnPaths = this.getModuleSpecifierBasedOnPaths(importingModule.file);
+      // step 2: if it turns out the importing module and the module being imported are in the same hierarchy, we don't want to use the
+      //         searchable path.
+      if (basedOnPaths != '' && ns.getFirstFolderName(basedOnPaths) != ns.getFirstFolderName(importingModuleSpecBasedOnPaths))
         return basedOnPaths;
       else
         return basedOnRelative;
@@ -377,14 +399,14 @@ export class Project {
 
   importing module:      /src/@bf-s/client/clientSupport
   importing module path: /src/@bf-s/client/
-  absolute module spec: /src/@bf-s/systemSupport
+  absolute module spec:  /src/@bf-s/systemSupport
 
   based on paths:    @bf-s/systemSupport
   based on relative: ../systemSupport
 
   now we need an importing-based-on-paths: @bf-s/client/clientsupport
 
-  if the "root" path of each based on path id the same, take relative.
+  if the "root" path of each "based on" path is the same, take relative.
   */
 
   /**
@@ -403,17 +425,21 @@ export class Project {
    *
    * @returns an object containing universalPathModuleSpecifier, and possibly the sourceModule it was found in.
    */
-  public async getUniversalPathModuleSpecifier(importingModulePath: string, anyModuleSpecifier:string):Promise<{universalPathModuleSpecifier:string, sourceModule?:SourceModule}> {
+  public async getUniversalPathModuleSpecifier(importingModulePath: string, anyModuleSpecifier:string):Promise<UniversalPathModuleSpecifierResult> {
     let anyShortenedModuleSpecifier = new as.ModuleSpecifierJuggler(anyModuleSpecifier).shortenedModuleSpecifier;
-
     if (this.config) {
 
       // try matching on a paths entry
       if (this.config.paths.matchOnMatcher(anyShortenedModuleSpecifier)) {
         for (let matchedMatcherPath of this.config.paths.resultingMatchedMatcherPaths) {
           let found = this.sourceModules.byUniversalPathShortenedModuleSpecifier(matchedMatcherPath)
-          if (found)
-            return {universalPathModuleSpecifier:found.value.universalPathModuleSpecifier, sourceModule:found.value};
+          if (found) {
+            let importingModuleSpecBasedOnPaths = this.getModuleSpecifierBasedOnPaths(importingModulePath);
+            return {
+              universalPathModuleSpecifier:found.value.universalPathModuleSpecifier,
+              sourceModule:found.value
+            };
+          }
         }
       }
 
@@ -422,7 +448,10 @@ export class Project {
         let fromBaseURL = ss.forwardSlashes( path.resolve( this.config.baseUrl, anyShortenedModuleSpecifier ) );
         let found = this.sourceModules.byUniversalPathShortenedModuleSpecifier(fromBaseURL)
         if (found)
-          return {universalPathModuleSpecifier:found.value.universalPathModuleSpecifier, sourceModule:found.value};
+          return {
+            universalPathModuleSpecifier:found.value.universalPathModuleSpecifier,
+            sourceModule:found.value
+          };
       }
 
       // try building path based on the rootDirs
@@ -430,23 +459,30 @@ export class Project {
         let fromRootDir = ss.forwardSlashes( path.resolve( rootDir, anyModuleSpecifier ) );
         let found = this.sourceModules.byUniversalPathShortenedModuleSpecifier(fromRootDir)
         if (found)
-          return {universalPathModuleSpecifier:found.value.universalPathModuleSpecifier};
+          return {
+            universalPathModuleSpecifier:found.value.universalPathModuleSpecifier
+          };
       }
 
     }
 
-    // try building a path based on the importing module path
+    // try building a path based on the importing module path, assuming the
     let fromImportingModulePath = ss.forwardSlashes( path.resolve( importingModulePath, anyModuleSpecifier ) );
     let found = this.sourceModules.byUniversalPathShortenedModuleSpecifier(fromImportingModulePath)
     if (found)
-      return {universalPathModuleSpecifier:found.value.universalPathModuleSpecifier, sourceModule:found.value};
+      return {
+        universalPathModuleSpecifier:found.value.universalPathModuleSpecifier,
+        sourceModule:found.value
+      };
 
     // check if the path exists on disk, because `this.sourceModule` may not be established yet, especially during early calls (before all of the scanning can take place)
     if (this.isLoading || this.isDirty) {
       let resolver = new ProjectModuleResolver(this);
       let found = (await resolver.getProjectFiles(importingModulePath+'dummy.ts',anyModuleSpecifier, /*skip node modules = */ true)).first;
       if (found)
-        return {universalPathModuleSpecifier:found.key};
+        return {
+          universalPathModuleSpecifier:found.key
+        };
     }
 
     // as a last resort, assume that it's a node_modules specifier, or maybe it is already an absolute path
@@ -466,7 +502,7 @@ export class Project {
   //   let workPath = ss.extractPath(absoluteModuleSpecifier);
   //   let fileName = ss.extractFileName(absoluteModuleSpecifier);
   //   let regexExtensions = cCodeExtensions.map( (ext) => ss.escapeRegex(ext) );
-  //   let extensionsRegex = new RegExp(ss.escapeRegex(fileName) + '('+ ss.concatWS('|',...regexExtensions) +')$'); // <-- /fileName\.(\.d\.ts|\.ts|\.js|\.tsx|\.jsx)$/ regex filters by extensions
+  //   let extensionsRegex = new RegExp(ss.escapeRegex(fileName) + '('+ ss.separate('|',...regexExtensions) +')$'); // <-- /fileName\.(\.d\.ts|\.ts|\.js|\.tsx|\.jsx)$/ regex filters by extensions
   //   let fileNames:string[] = [];
   //   try {
   //     fileNames = await ns.getItemsAtPathWithRegex(workPath, extensionsRegex, true /* files only */);
@@ -485,7 +521,7 @@ export class Project {
     module.project = this;
     module.sourceCode = ( await vscode.workspace.fs.readFile( vscode.Uri.file(sourceModuleToScan.universalPathModuleSpecifier) )).toString();
     await module.scan();
-    for (let importStatement of module.importStatements) {
+    module.eachImportStatement((importStatement) => {
 
       if (importStatement.sourceModule) {
         this.sourceModuleUsedBySourceModules.set(importStatement.sourceModule,sourceModuleToScan,importStatement.startLocation);
@@ -519,7 +555,7 @@ export class Project {
         this.sourceSymbolImportUsedBySourceModules.set(sourceSymbolImport,sourceModuleToScan,importStatement.startLocation); // <-- adds this file module to the list of modules that use this symbol
       }
 
-    }
+    });
   }
 
   /**

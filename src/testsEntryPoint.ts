@@ -17,8 +17,7 @@ export async function run(): Promise<void> {
   await ss.sleep(1000);
 
   await qt.start({
-    outputToConsole:true, // <-- vscode will not capture stdout, so we have to force output to the console. (at least in Windows)
+    outputToConsole:true // <-- vscode will not capture stdout, so we have to force output to the console. (at least in Windows)
   });
 
 }
-

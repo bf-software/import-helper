@@ -62,11 +62,11 @@ let baseConfig = {
           to: ""
         },
         {
-          from: "./node_modules/vscode-codicons/dist/codicon.css",
+          from: "./node_modules/@vscode/codicons/dist/codicon.css",
           to: ""
         },
         {
-          from: "./node_modules/vscode-codicons/dist/codicon.ttf",
+          from: "./node_modules/@vscode/codicons/dist/codicon.ttf",
           to: ""
         }
       ]

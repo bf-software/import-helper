@@ -6,6 +6,7 @@ import * as as from './appSupport';
 import { Module } from './moduleParser';
 import { SourceModule } from './projectModule';
 
+
 /**
  *```
  * | kind          | example                                   |
@@ -196,7 +197,9 @@ export class ImportStatement extends Scanable {
 
 	public hasType:boolean = false;
 
+  /** indicates if the extension should be shown in the module specifier */
   public useModuleSpecifierExt: boolean = false;
+  /** if the module's name is "index.js" or "index.ts", this indicates if the statement should show it in the module specifier */
   public useModuleSpecifierIndex: boolean = false;
 	public alias:string = '';
 	public importKind:ImportKind = ImportKind.moduleOnly;
@@ -334,14 +337,14 @@ export class ImportStatement extends Scanable {
 	 *   - `import sys from 'system'` is the same type as `import {files, folders} from 'system'`
 	 *   - the above examples are the same type because you can merge them to form `import sys, {files, folders} from 'system'`
 	 *
-	 * - no so obvious case:
+	 * - not so obvious case:
 	 *   - `import sys from 'system'` can overwrite `import * as sys from 'system'`
 	 *   - this is because if you are importing the module with an all alias, it's unlikely that you would be importing a default export and an all alias at the same time
    *
    * - can not overwite:
    *   - `import { symbol } from 'system'` cannot be added to `import * as sys from 'system'`
 	 */
-  public isMergable(sourceImportStatement:ImportStatement, mergeError:{message:string}):boolean  {
+  public isMergable(sourceImportStatement:ImportStatement, mergeError:{message:string}={message:''}):boolean  {
     mergeError.message = '';
 
     // basic check, if either statement could not be understood by the parser, we can't say they are mergable
@@ -462,9 +465,9 @@ export class ImportStatement extends Scanable {
 		this.useModuleSpecifierIndex = moduleSpecifierJuggler.hasIndex;
     this.useModuleSpecifierExt = as.cHiddenCodeExtensionsRank.includes(moduleSpecifierJuggler.ext);
 
-		let {universalPathModuleSpecifier, sourceModule} = await (this.parent as Module).project.getUniversalPathModuleSpecifier((this.parent as Module).path, anyModuleSpecifier);
-		this.universalPathModuleSpecifier = universalPathModuleSpecifier;
-		this.sourceModule = sourceModule;
+		let pathResult = await (this.parent as Module).project.getUniversalPathModuleSpecifier((this.parent as Module).path, anyModuleSpecifier);
+		this.universalPathModuleSpecifier = pathResult.universalPathModuleSpecifier;
+		this.sourceModule = pathResult.sourceModule;
 	}
 
 	public asText():string {

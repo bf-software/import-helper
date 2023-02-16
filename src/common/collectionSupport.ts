@@ -148,6 +148,7 @@
 //***** FfBaseArray -> FfArray *********************
 
 import * as ss from './systemSupport';
+import { Event } from './eventSupport';
 
 
 export class FfBaseArrayFound<V> {
@@ -168,7 +169,7 @@ export abstract class FfBaseArray<V,F extends FfBaseArrayFound<V>> extends Array
 
   protected abstract foundClass: { new(index:number, value:V): F };
 
-  public onBeforeDelete = new ss.Event<F>();
+  public onBeforeDelete = new Event<F>();
 
 
   public get sortReversed() {
@@ -233,14 +234,6 @@ export abstract class FfBaseArray<V,F extends FfBaseArrayFound<V>> extends Array
       index++;
     }
   }
-
-  public byFuncReverse( func: (value:V, index:number) => boolean ):F | undefined {
-    for (let index = this.length-1; index >= 0; index--) {
-      if (func(this[index], index))
-        return new this.foundClass(index, this[index]);
-    }
-  }
-
 
   protected byValue(value:V):F | undefined {
     return this.byFunc( (v) => v == value );
@@ -505,7 +498,7 @@ export abstract class FfBaseSortedArray<V,F extends FfBaseArrayFound<V>> extends
   */
   public reverse(): V[] {
     this.sortReversed = !this.sortReversed;
-    this.sort;
+    this.sort();
     return new Array(...this);
   }
 
@@ -658,6 +651,16 @@ export abstract class FfBaseMap<K,V,F extends FfBaseMapFound<K,V>,FI extends FfB
   }
 
   /**
+   * sequentially searches the map for the value  If the key is not found, this throws an error.
+   */
+  protected byExistingValue(value:V, valueName:string='value'):FI {
+    let valueFound = this.byValue( value );
+    if (!valueFound)
+      throw new Error(`${valueName} not found: ${value}`);
+    return valueFound;
+  }
+
+  /**
    * sequentially searches the map for the key and returns the key, value and index
    */
   protected byKeyWithIndex(key:K):FI | undefined {
@@ -731,8 +734,8 @@ export abstract class FfBaseMap<K,V,F extends FfBaseMapFound<K,V>,FI extends FfB
     return Array.from(this.entries());
   }
 
-  public toJSON():string {
-    return JSON.stringify(Array.from(this.entries()));
+  public toJSON():Array<any> {
+    return this.toArray();
   }
 
   /**
@@ -809,6 +812,11 @@ export class FfMap<K,V> extends FfBaseMap<K, V, FfMapFound<K,V>, FfMapFoundIndex
   public byExistingKey(key:K, keyName:string='key'):FfMapFound<K,V> {
     return super.byExistingKey(key, keyName);
   }
+
+  public byExistingValue(value:V, valueName:string='value'):FfMapFoundIndex<K,V> {
+    return super.byExistingValue(value, valueName);
+  }
+
 
   /**
    * finds the key and returns the value and index.  Note: this is slower than @function byKey() because it uses
@@ -1639,16 +1647,39 @@ export class FfDualKeyMap<K1,K2,V> extends FfBaseDualKeyMap<K1,K2,V,
  * Weighted Sort
  */
 
+class WeightedSortDebugInfo {
+  public criteria:{
+    name:string,
+    value:number,
+    adjustedValue?:number,
+    lowest:number,
+    highest:number,
+    adjustedLowest?:number,
+    adjustedHighest?:number,
+    lowerIsBetter: boolean,
+    weight: number,
+    score: number
+  }[] = [];
+  public totalScore:number = 0;
+}
+
 interface CriterianOptions<T> {
-  /**
-   * default: `true` | Setting this to `false` causes the weight to be flipped, where the lowest number gets the best score.  Ex. if a high value is considered
-   * "bad" like a "bank fee", where the higher the fee, the worse it is, you would set this to `false` so that higher bank fees are sorted
-   *  towards the bottom.
-   */
-  higherIsBetter?:boolean;
+  /** name used in debug function output */
+  name?:string,
 
   /**
-   * sets a floor for the highest value.
+   * default: `false` | Setting this to `true` causes the weight to be flipped, where the lowest
+   * number gets the best score.  Ex. if a high value is considered "bad" like a "bank fee", where
+   * the higher the fee, the worse it is, you would set this to `true` so that higher bank fees are
+   * sorted towards the bottom.
+   */
+  lowerIsBetter?:boolean;
+
+  /**
+   * sets a floor for the values. This means, all values are considered to be at least
+   * this high. For example, if a list consists of numbers from 1 to 100, setting this to 10 would
+   * mean that the actual range considered in the weighted calculations would only be from 10 to
+   * 100.  Numbers from 0 to 9 would be given the same weight as 10.
    */
   minimumHighValue?:number;
 
@@ -1679,24 +1710,28 @@ class WeightedCriterian<T> {
   }
 
   public highest:number = 0;
+  public adjustedHighest:number = 0;
+
   public lowest:number = 0;
+  public adjustedLowest:number = 0;
 
   public clearRanges() {
-    this.highest = this.options?.minimumHighValue ?? Number.MIN_VALUE;
-    this.lowest = this.options?.maximumLowValue ?? Number.MAX_VALUE;
+    this.highest = -Number.MAX_VALUE;
+    this.lowest = Number.MAX_VALUE;
+    this.adjustedHighest = this.options?.minimumHighValue ?? -Number.MAX_VALUE;
+    this.adjustedLowest = this.options?.maximumLowValue ?? Number.MAX_VALUE;
   }
 
 }
 
 
 /**
- * sorts arrays based on a set of weighted criteria.  When sorting, each individual
- * criterian is compared to the best value in the entire array.  The score for that
- * criteria is determined by how close it is to the best value.  The best value is
- * awarded the entire `weight` amount as its score, while lower scores are awarded
- * a portion of the weight amount.  All of the individual scores for each item are
- * added together to find the final score of the item.  An item's location in the
- * final sort is based on its final score.
+ * sorts arrays based on a set of weighted criteria.  When sorting, each individual criterian is
+ * compared to the best value in the entire array.  The score for that criteria is determined by how
+ * close it is to the best value.  The best value is awarded the entire `weight` amount as its
+ * score, while lower scores are awarded a portion of the weight amount.  All of the individual
+ * scores for each item are added together to find the final score of the item.  An item's location
+ * in the final sort is based on its final score.
  * ```
  * let example = [
  *   {name:'joe', test1:85, test2:77, final:89,  daysAbsent:2},
@@ -1709,21 +1744,20 @@ class WeightedCriterian<T> {
  * weightedSort.addCriterian(20, (item) => item.test1 );
  * weightedSort.addCriterian(30, (item) => item.test2 );
  * weightedSort.addCriterian(50, (item) => item.final );
- * weightedSort.addCriterian(10, (item) => item.daysAbsent, false );
+ * weightedSort.addCriterian(10, (item) => item.daysAbsent, {higherIsBetter: false} );
  *
- * weightedSort.sort(example);
+ * weightedSort.prepareAndSort(example);
  * ```
- * in the example above, the best `test1` score is 87. A weight of 20 points is
- * configured for the `test1` value.  So when calculating the final score for `sue`,
- * she is awarded all 20 points for her value of `87`. `bob` for example is awarded a
- * score of `0` because he has the worst score. And finally `joe ` is awarded a score of
- * 18 points.  This continues for each additional criteria, adding up all of the points
- * to arrive at a final score for each person.
+ * in the example above, the best `test1` score is 87. A weight of 20 points is configured for the
+ * `test1` value.  So when calculating the final score for `sue`, she is awarded all 20 points for
+ * her value of `87`. `bob` is awarded a score of `0` because he has the worst score. And finally
+ * `joe ` is awarded a score of 18 points.  This continues for each additional criteria, adding up
+ * all of the points to arrive at a final score for each person.
  *
- * Note that `daysAbsent` is set as `higherIsBetter=false`.  This will award points based
- * on having the lowest value.
+ * Note that `daysAbsent` is set as `higherIsBetter: false`.  This will award points based on having
+ * the lowest value.
  *
- * The intermediate and file scores calculated for the example are as follows:
+ * The intermediate and final scores calculated for the example are as follows:
  * ```
  * {name:'joe', test1:85 (score: 18), test2:77 (score:  0), final:89  (score: 0),   daysAbsent:2 (score: 10)},  (totalScore: 18+0+0+10=28)
  * {name:'bob', test1:65 (score:  0), test2:88 (score: 28), final:95  (score: 27 ), daysAbsent:4 (score:  7)},  (totalScore: 0+28+27+7=62)
@@ -1731,14 +1765,15 @@ class WeightedCriterian<T> {
  * ```
  * so as you can see, `sue` would be sorted first with a final score of 100, and the rest would follow.
  *
- * Some things to note:
- * This is strictly for sorting.  As you can see the score itself wouldn't be "fair" if this were to be used in an
- * actual academic grading system, as poor `joe` did pretty well on his tests, but ended up with a final "score" of 28.
- * Also, the weights are completely arbitrary and do not have to add up to any particular number.  In the example, all of
- * the weights added up to 110.  You may want to use 100 as a starting point, but it isn't necessary.
+ * Some things to note: This is strictly for sorting.  As you can see the score itself wouldn't be
+ * "fair" if this were to be used in an actual academic grading system, as poor `joe` did pretty
+ * well on his tests, but ended up with a final "score" of 28. Also, the weights are completely
+ * arbitrary and do not have to add up to any particular number.  In the example, all of the weights
+ * added up to 110.  You may want to use 100 as a starting point, but it isn't necessary.
  *
- * If you are interested in what the scores actually were after a sort, simply use {@link getScore}() on any item in your
- * array.  (note: only use `getScore()` after first calling {@link prepare}() or {@link prepareAndSort}()
+ * If you are interested in what the scores actually were after a sort, simply use
+ * {@link getScore}() on any item in your array.  (note: only use `getScore()` after first calling
+ * {@link prepare}() or {@link prepareAndSort}()
  *
  */
 export class WeightedSort<T> {
@@ -1752,26 +1787,28 @@ export class WeightedSort<T> {
   }
 
   /**
-   * sets the provided criteria ranges to the highest and lowest values.  Call without parameters to set all criteria.
+   * sets the provided criteria ranges to the highest and lowest values among each other.  Call without parameters to
+   * set all criteria.  This is useful when 2 or more criteria are related to each other and should adhere to the
+   * same range.
    */
 	public equalizeRanges(...criteria:WeightedCriterian<T>[]) {
     if (criteria.length == 0)
       criteria = this.criteria
-    let highest = Number.MIN_VALUE;
-    let lowest = Number.MAX_VALUE;
+    let adjustedHighest = -Number.MAX_VALUE;
+    let adjustedLowest = Number.MAX_VALUE;
     for (let criterian of criteria) {
-      highest = Math.max(highest, criterian.highest);
-      lowest = Math.min(lowest, criterian.lowest);
+      adjustedHighest = Math.max(adjustedHighest, criterian.adjustedHighest);
+      adjustedLowest = Math.min(adjustedLowest, criterian.adjustedLowest);
     }
     for (let criterian of criteria) {
-      criterian.highest = highest;
-      criterian.lowest = lowest;
+      criterian.adjustedHighest = adjustedHighest;
+      criterian.adjustedLowest = adjustedLowest;
     }
 	}
 
 
   /**
-   * does an initial pass through the data to determine the ranges of the possible criteria.  This is
+   * does an initial pass through the data to determine the ranges of the criteria.  This is
    * necessary to properly weigh the values.
    */
   public prepare(array:Array<T>) {
@@ -1781,35 +1818,40 @@ export class WeightedSort<T> {
         let value = criterian.valueGetter(item);
         criterian.highest = Math.max(criterian.highest, value);
         criterian.lowest = Math.min(criterian.lowest, value);
+        criterian.adjustedHighest = Math.max(criterian.adjustedHighest, value);
+        criterian.adjustedLowest = Math.min(criterian.adjustedLowest, value);
       }
     }
     this.isPrepared = true;
   }
 
   /**
-   * uses the critia weights and item values to come up with a overall score for the item.  This score
-   * determines the item's position in the sort.
+   * uses the critia weights and item values to come up with a overall score for the item.  This
+   * score determines the item's position in the sort.
    */
-  public getScore(item:T) {
+  public getScore(item:T):{criterianValues:{value:number, adjustedValue:number, score:number}[], totalScore:number} {
     if (!this.isPrepared)
       throw new Error('prepare() must be called first');
+    let criterianValues:{value:number, adjustedValue:number, score:number}[] = [];
     let totalScore = 0;
     for (let criterian of this.criteria) {
       let value = criterian.valueGetter(item);
-      value = Math.min(criterian.options?.maximumHighValue ?? Number.MAX_VALUE, value);
-      value = Math.max(criterian.options?.minimumLowValue ?? Number.MIN_VALUE, value);
+      let adjustedValue = value;
+      adjustedValue = Math.min(criterian.options?.maximumHighValue ?? Number.MAX_VALUE, adjustedValue);
+      adjustedValue = Math.max(criterian.options?.minimumLowValue ?? 0, adjustedValue);
 
       let scoreFraction = 0;
-      if ( criterian.highest != criterian.lowest ) {
-        scoreFraction = (value - criterian.lowest) /
-                        (criterian.highest - criterian.lowest);
-        if (!(criterian.options?.higherIsBetter ?? true))
+      if ( criterian.adjustedHighest != criterian.adjustedLowest ) {
+        scoreFraction = (adjustedValue - criterian.adjustedLowest) /
+                        (criterian.adjustedHighest - criterian.adjustedLowest);
+        if (criterian.options?.lowerIsBetter ?? false)
           scoreFraction = 1 - scoreFraction;
       }
       let criterianScore = scoreFraction * criterian.weight;
+      criterianValues.push({value, adjustedValue, score:criterianScore});
       totalScore += criterianScore;
     }
-    return totalScore;
+    return {criterianValues, totalScore};
   }
 
   public clearCriteria() {
@@ -1818,10 +1860,10 @@ export class WeightedSort<T> {
   }
 
   /**
-   * @param weight an arbitrary number to assign to the best value in the criterian.  The best value of the entire array
-   * returned by the `valueGetter` in this criterian will be assigned this weight as "score", while the worst value will be
-   * assigned 0.  Everything else will be assigned a score proportionallly.  All of the individual criterian scores are added
-   * together to arrive at the final "score" which is what is actually used for sorting.
+   * @param weight an arbitrary number to assign to the best value in the criterian range.  The best value of the entire array
+   * returned by the `valueGetter` in this criterian will be assigned this `weight` value as the "score", while the worst value will be
+   * assigned 0.  Everything else will be assigned a score proportional between `weight` and 0.  All of the individual criterian scores
+   * are then added together to arrive at the final "score" which is what is actually used for sorting.
    * @param valueGetter the getter function that is used to get value of an item's criterian when needed during the sorting
    * process.  The value may come from the actual array element, or from some member deep within classes inside the array
    * element. This architecture simply provides the most flexibility when sorting.
@@ -1832,23 +1874,91 @@ export class WeightedSort<T> {
   }
 
   /**
-   * @param array sorts the array in place using the established weighted criteria.  `prepareSort()` must be called before this.
+   * @param array sorts the array in place using the established weighted criteria.  {@link prepareSort()} must be called before this.
    */
   public sort(array:Array<T>) {
     if (!this.isPrepared)
       throw new Error('prepare() must be called first');
     array.sort( (a:T, b:T) => {
-      return (this.getScore(a) - this.getScore(b)) * /*sort descending*/ -1;
+      return (this.getScore(a).totalScore - this.getScore(b).totalScore) * /*sort descending*/ -1;
     })
   }
 
   /**
-   * prepares the criteria, then sorts the array.  You may however want to call prepare() and sort() separately
+   * prepares the criteria, then sorts the array.  You may however want to call {@link prepare}() and {@link sort}() separately
    * so you can modify the criteria's high and low values before calling sort.
    */
   public prepareAndSort(array:Array<T>) {
     this.prepare(array);
     this.sort(array);
+  }
+
+
+  /**
+   * returns all of the information used to come up with an item's weighted score
+   */
+  public getDebugInfo(item: T): WeightedSortDebugInfo {
+    let info = new WeightedSortDebugInfo();
+    let criterianScore = this.getScore(item);
+    info.totalScore = criterianScore.totalScore;
+    let i = 0;
+    for (let criterian of this.criteria) {
+      let criterianValue = criterianScore.criterianValues[i++];
+      let criterianInfo = {
+        name: criterian.options?.name ?? '',
+        value: criterianValue.value,
+        adjustedValue: (criterianValue.value == criterianValue.adjustedValue ? undefined : criterianValue.adjustedValue),
+        lowest: criterian.lowest,
+        highest: criterian.highest,
+        adjustedLowest:(criterian.lowest == criterian.adjustedLowest && criterian.highest == criterian.adjustedHighest ? undefined : criterian.adjustedLowest),
+        adjustedHighest:(criterian.lowest == criterian.adjustedLowest && criterian.highest == criterian.adjustedHighest ? undefined : criterian.adjustedHighest),
+        lowerIsBetter: criterian.options?.lowerIsBetter ?? false,
+        weight: criterian.weight,
+        score: criterianValue.score
+      }
+      info.criteria.push(criterianInfo);
+    }
+    return info;
+  }
+
+  /**
+   * outputs debug info in a text grid. ex:
+   *```
+   *   criterian        range          value    weight  score
+   *   test1            20…87 (50…87)  20 (50)  20       8.96
+   *   test2            77…89          77       30       0.00
+   *   final            89…100         89       50       0.00
+   *   daysAbsent ↓🖒    2…9            2        10      10.00
+   *                                            total   18.96
+   * ```
+   * key:
+   *  - `(50…87)` - the range was ajdusted to 50…87
+   *  - `(50)` - value was adjusted to 50
+   *  - `↓🖒` - lower is better
+   */
+  public getDebugGrid(item: T): string {
+    let info = this.getDebugInfo(item);
+    let grid:string[][] = [];
+    grid.push(          ['criterian','range','value','weight','score']);
+    let columnOptions = [{},         {},     {},      {},     {textAlign: 'right'}];
+    for (let criterian of info.criteria)
+      grid.push([
+        criterian.name +
+          (criterian.lowerIsBetter ? ' ↓🖒' : ''),
+        `${criterian.lowest}…${criterian.highest}` +
+          (typeof criterian.adjustedLowest == 'number' ? ` (${criterian.adjustedLowest}…${criterian.adjustedHighest})`: ''),
+        `${criterian.value}` + (typeof criterian.adjustedValue == 'number' ? ` (${criterian.adjustedValue})` : ''),
+        `${criterian.weight}`,
+        `${criterian.score.toFixed(2)}`
+      ]);
+    grid.push([
+      '',
+      '',
+      '',
+      `total`,
+      `${info.totalScore.toFixed(2)}`
+    ]);
+    return ss.buildTextGrid(grid,{columnOptions});
   }
 
 }

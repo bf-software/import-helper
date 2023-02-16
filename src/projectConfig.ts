@@ -262,12 +262,18 @@ class Paths extends cs.FfMap<string, string[]> {
   public matchOnMatcher(moduleSpecifier: string): boolean {
     this.resultingMatchedMatcherPaths = [];
     for (let [matcher, matcherPaths] of this.entries()) {
-      let matcherRegEx = ss.escapeRegex(matcher).replace('\\*', '(.*)'); // "src/*" --> "src\/(.*)"
-      let matches = moduleSpecifier.match(matcherRegEx);
-      if (matches) {
-        this.resultingMatchedModuleSpecifier = matches[1] ?? '';
-        for (let matcherPath of matcherPaths)
-          this.resultingMatchedMatcherPaths.push(matcherPath.replace('*', this.resultingMatchedModuleSpecifier));
+      if (matcher.includes('*')) {
+        let matcherRegEx = ss.escapeRegex(matcher).replace('\\*', '(.*)'); // "src/*" --> "src\/(.*)"
+        let matches = moduleSpecifier.match(matcherRegEx);
+        if (matches) {
+          this.resultingMatchedModuleSpecifier = matches[1] ?? '';
+          for (let matcherPath of matcherPaths)
+            this.resultingMatchedMatcherPaths.push(matcherPath.replace('*', this.resultingMatchedModuleSpecifier));
+        }
+      } else {
+        if (matcher == moduleSpecifier)
+          for (let matcherPath of matcherPaths)
+            this.resultingMatchedMatcherPaths.push(matcherPath);
       }
     }
     return this.resultingMatchedMatcherPaths.length > 0;

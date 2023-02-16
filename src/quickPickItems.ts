@@ -17,6 +17,15 @@ const cSGSourceModule = 2;
 const cSGNodeModule = 3;
 const cSGProjectSymbol = 4;
 
+
+/**
+ * the maximum number of seconds since the module was last used that is eligible for weighted sorting.  For example,
+ * if this is set to 3600 (1 hour), then only modules that have been used within the last hour are given any extra
+ * weight when sorting.  Modules used very recently, like only a few seconds ago, will have the highest weights, and
+ * those that are near an hour old, will have the lowest. (Those older than an hour will have no extra weight.)
+ */
+const cMaxSecondsSortWeight = 60 * 60; // 1 hour
+
 let moduleItemButtons: vscode.QuickInputButton[] = [];
 export let settings = { moduleItemButtons };
 
@@ -31,17 +40,18 @@ export function normalSort(items:Array<ReferenceCountQuickPickItem>) {
 
 export function weightedSort(items:Array<ReferenceCountQuickPickItem>) {
   let ws = new cs.WeightedSort<ReferenceCountQuickPickItem>();
-	let directCriteran = ws.addCriterian(60, (item) => item.directReferenceCount, {minimumHighValue:5});
-	let indirectCriterian = ws.addCriterian(20, (item) => item.indirectReferenceCount, {minimumHighValue:5});
-	let lengthCriterian = ws.addCriterian(20, (item) => item.sortText.length, {higherIsBetter: false});
+	let directCriteran    = ws.addCriterian(45, (item) => item.directReferenceCount,      {name:'direct'});
+	let indirectCriterian = ws.addCriterian(15, (item) => item.indirectReferenceCount,    {name:'indirect'});
+  let lastUsedCriterian = ws.addCriterian(30, (item) => item.getSecondsSinceLastUsed(), {name:'lastUsed', lowerIsBetter: true});
+	let lengthCriterian   = ws.addCriterian(10, (item) => item.sortText.length,           {name:'length',   lowerIsBetter: true});
 	ws.prepare(items);
-  ws.equalizeRanges(directCriteran, indirectCriterian);
+  //ws.equalizeRanges(directCriteran, indirectCriterian);
 	ws.sort(items);
 
-	//for debugging the weighted sort:
-	// 	for (let item of items)
-	// 		item.debugSortScore = ws.getScore(item);
-	// console.dir(ws.criteria);
+	// //for debugging the weighted sort:
+	// for (let item of items) {
+  //   item.sortDebugGrid = ws.getDebugGrid(item);
+  // }
 }
 
 export class ReferenceCountQuickPickItem extends PlainQuickPickItem {
@@ -49,15 +59,18 @@ export class ReferenceCountQuickPickItem extends PlainQuickPickItem {
   public sortGroupName: string = '';
 	public sortGroup: string = '';
 	public sortText: string = '';
+  public sortDebugGrid :string = '';
   /**
-   * a direct reference is one that links to a full import statement like `import * as ss from 'systemSupport'`, or to a symbol import
-   * like `import {Event} from 'systemSupport'`.  An indirect reference is when a module just knows it's being used somewhere.  This is
-   * used to increase the sorting position of direct references in the "step 1" list.
+   * for module items, this indicates the number of project modules that use a "full import" such as
+   * `import * as ss from 'systemSupport'` to import this module. For other items, such as symbol
+   * items, this simply indicates how many times the symbol was imported by modules in the project.
    */
   public directReferenceCount: number = 0;
-  /** {@see directReferenceCount} */
+  /**
+   * this is only used by module items, it indicates how many other modules in the project import a
+   * **symbol** from this module (as apposed to the `directReferenceCount`, which only counts full
+   * imports). */
   public indirectReferenceCount: number = 0;
-  public debugSortScore: number = -1;
 	public labelIcon: string = '';
   public labelText: string = '';
 	/**
@@ -75,16 +88,18 @@ export class ReferenceCountQuickPickItem extends PlainQuickPickItem {
 	  return this.directReferenceCount + this.indirectReferenceCount;
 	}
 
+  public getSecondsSinceLastUsed(): number {
+    return cMaxSecondsSortWeight;
+  }
+
 	public render() {
 		super.render();
 		this.label = ss.infix('$(',this.labelIcon,') ') + this.labelText;
 		this.description = this.description + (this.referenceCount > 0 ? '   ❬' + this.referenceCount + '❭' : ''); //  ❬5❭ （2） 【6】  〖18〗  ﹙6﹚ ﹝12﹞
 
-
-		// for debugging the weighted sort:
-		// this.description = this.description +   '   d ❬' + this.directReferenceCount + '❭' +
-		//                                            '   i ❬' + (this.indirectReferenceCount) + '❭' +
-  	// 																						'   score ❬' + this.debugSortScore.toFixed(2) + '❭';
+    // for debugging sorting...
+    // console.log(`${this.labelText} | ${this.description}`);
+    // console.log(ss.indent(this.sortDebugGrid,'  '));
 	}
 
 }
@@ -98,6 +113,16 @@ export abstract class ProjectModuleQuickPickItem extends ReferenceCountQuickPick
 	  super(module);
     this.buttons = settings.moduleItemButtons;
 	}
+
+  public getSecondsSinceLastUsed(): number {
+    if (this.projectModule.lastUsedDate)
+      return ss.secondsSince(this.projectModule.lastUsedDate);
+    return cMaxSecondsSortWeight;
+  }
+
+  public setLastUsedDate() {
+    this.projectModule.lastUsedDate = new Date();
+  };
 }
 
 export class SeparatorItem extends PlainQuickPickItem {
@@ -163,6 +188,14 @@ export class SourceModuleQuickPickItem extends ProjectModuleQuickPickItem {
 
     super.render();
 	}
+
+  public isSameAs(otherQpi:PlainQuickPickItem):boolean {
+    if (otherQpi instanceof SourceModuleQuickPickItem)
+      if (this.importStatement.universalPathShortenedModuleSpecifier == otherQpi.importStatement.universalPathShortenedModuleSpecifier)
+        return true;
+    return false;
+  }
+
 }
 
 /** this is only used by {@link ImportHelperApi.showReferences} so that it can keep track of where the importing import statement is. */
@@ -177,6 +210,7 @@ export class SourceModuleQuickPickItemLocation extends SourceModuleQuickPickItem
 }
 
 export class NodeModuleQuickPickItem extends ProjectModuleQuickPickItem {
+  public projectNodeModule:NodeModule|undefined;
 	constructor(
     module:Module,
 		public projectModule: NodeModule
@@ -184,10 +218,10 @@ export class NodeModuleQuickPickItem extends ProjectModuleQuickPickItem {
 	  super(module,projectModule);
 		this.importStatement.universalPathModuleSpecifier = this.nodeModule.universalPathModuleSpecifier;
 		// since the `AddImportApi.nodeModules` is a list of node modules that is different from the `Project.nodeModules`,
-		// so we need to look it up in the `Project.nodeModules` to get the usedCount
-		let foundProjectNodeModule = docs.active!.project!.nodeModules.byKey(this.nodeModule.universalPathShortenedModuleSpecifier);
-		if (foundProjectNodeModule)
-			this.indirectReferenceCount = foundProjectNodeModule.value.usedByCount;
+		// we need to look it up in the `Project.nodeModules` so it can be used to get the usedCount, and other things like lastUsedDate
+		this.projectNodeModule = docs.active!.project!.nodeModules.byKey(this.nodeModule.universalPathShortenedModuleSpecifier)?.value;
+		if (this.projectNodeModule)
+			this.indirectReferenceCount = this.projectNodeModule.usedByCount;
 		this.searchTargetLength = this.nodeModule.universalPathModuleSpecifier.length;
     this.sortGroupName = 'node_modules';
 		this.sortGroup = String(cSGNodeModule);
@@ -198,6 +232,18 @@ export class NodeModuleQuickPickItem extends ProjectModuleQuickPickItem {
 	  return this.projectModule;
   }
 
+  public setLastUsedDate() {
+    if (this.projectNodeModule)
+      this.projectNodeModule.lastUsedDate = new Date();
+  };
+
+  public getSecondsSinceLastUsed(): number {
+    if (this.projectNodeModule)
+      if (this.projectModule.lastUsedDate)
+        return ss.secondsSince(this.projectModule.lastUsedDate);
+    return cMaxSecondsSortWeight;
+  }
+
 	public render() {
 		this.labelIcon = as.getModuleIcon(this.nodeModule.universalPathModuleSpecifier, this.nodeModule.isCode, true);
 		this.labelText = this.nodeModule.universalPathModuleSpecifier;
@@ -205,6 +251,14 @@ export class NodeModuleQuickPickItem extends ProjectModuleQuickPickItem {
 		this.description = '(node_modules)';
     super.render();
 	}
+
+  public isSameAs(otherQpi:PlainQuickPickItem):boolean {
+    if (otherQpi instanceof NodeModuleQuickPickItem)
+      if (this.importStatement.universalPathShortenedModuleSpecifier == otherQpi.importStatement.universalPathShortenedModuleSpecifier)
+        return true;
+    return false;
+  }
+
 }
 
 export class SourceModuleImportQuickPickItem extends ProjectModuleQuickPickItem {
@@ -238,6 +292,17 @@ export class SourceModuleImportQuickPickItem extends ProjectModuleQuickPickItem 
 
 		super.render();
 	}
+
+  public isSameAs(otherQpi:PlainQuickPickItem):boolean {
+    if (otherQpi instanceof SourceModuleImportQuickPickItem)
+      if (this.importStatement.universalPathShortenedModuleSpecifier == otherQpi.importStatement.universalPathShortenedModuleSpecifier) {
+        if (this.importStatement.alias != otherQpi.importStatement.alias)
+          return false;
+        return true;
+      }
+    return false;
+  }
+
 }
 
 export class SourceSymbolImportQuickPickItem extends ProjectModuleQuickPickItem {
@@ -268,10 +333,29 @@ export class SourceSymbolImportQuickPickItem extends ProjectModuleQuickPickItem 
 		this.labelText = `{${this.importStatement.symbols.asText()}}`;
 
 		// description
+    // (using `quotedModuleSpecifier` here instead of just `moduleSpecifier` because it helps show
+    // that this is a full path to a module--including the module name.  It differentiates it from
+    // the paths to the module shown for whole modules.)
     this.description = `${this.importStatement.quotedModuleSpecifier}`;
 
 		super.render();
 	}
+
+  public isSameAs(otherQpi:PlainQuickPickItem):boolean {
+    if (otherQpi instanceof SourceSymbolImportQuickPickItem)
+      if (this.importStatement.universalPathShortenedModuleSpecifier == otherQpi.importStatement.universalPathShortenedModuleSpecifier) {
+        if (this.importStatement.alias != otherQpi.importStatement.alias)
+          return false;
+        if (this.importStatement.hasSymbols != otherQpi.importStatement.hasSymbols)
+          return false;
+        if (this.importStatement.hasSymbols)
+          if (this.importStatement.symbols.items[0].nameAndAlias != otherQpi.importStatement.symbols.items[0].nameAndAlias)
+            return false;
+        return true;
+      }
+    return false;
+  }
+
 }
 
 
@@ -299,6 +383,22 @@ export class SymbolQuickPickItem extends ProjectModuleQuickPickItem {
 
 		super.render();
 	}
+
+  public isSameAs(otherQpi:PlainQuickPickItem):boolean {
+    if (otherQpi instanceof SymbolQuickPickItem)
+      if (this.importStatement.universalPathShortenedModuleSpecifier == otherQpi.importStatement.universalPathShortenedModuleSpecifier) {
+        if (this.importStatement.alias != otherQpi.importStatement.alias)
+          return false;
+        if (this.importStatement.hasSymbols != otherQpi.importStatement.hasSymbols)
+          return false;
+        if (this.importStatement.hasSymbols)
+          if (this.importStatement.symbols.items[0].nameAndAlias != otherQpi.importStatement.symbols.items[0].nameAndAlias)
+            return false;
+        return true;
+      }
+    return false;
+  }
+
 }
 
 

@@ -15,8 +15,12 @@
 	"categories": [
 		"Programming Languages"
 	],
-  "keywords": [
-		"javascript", "typescript", "svelte", "import", "modules"
+	"keywords": [
+		"javascript",
+		"typescript",
+		"svelte",
+		"import",
+		"modules"
 	],
 	"activationEvents": [
 		"onStartupFinished",
@@ -47,12 +51,12 @@
 					"default": "",
 					"markdownDescription": "List paths to be excluded when looking for your project's modules. Start a path with a forward slash to start from the root of your workspace, otherwise exclusions are considered to reside anywhere in the path.\n\n&nbsp;\n\nFor example: `/out, test` will exclude `<workspace root>/out`, but not `<workspace root>/whatever/out`.  It will also exclude any folder named `test` in your entire hierarchy. There is no need to add `node_modules` as it is always excluded."
 				},
-				"import-helper.extentions.additional": {
+				"import-helper.extensions.additional": {
 					"type": "string",
 					"scope": "window",
 					"default": "",
 					"markdownDescription": "List additional extensions to allow in import statements. For example, React with Webpack allows `css` files to be imported directly into your code. (format: .ext1, .ext2, etc...)"
-				}
+        }
 			}
 		},
 		"commands": [
@@ -127,7 +131,7 @@
 	},
 	"scripts-comments": {
 		"dev-build": "a non-watching build for developing. only used when a lot of errors are found and I need to peruse them slowly",
-    "dev-watch": "use this to build while developing",
+		"dev-watch": "use this to build while developing",
 		"prod-build": "must use this before deploying",
 		"prod-map-explorer-list": "use this after prod-build to make sure that we're only deploying the things we need",
 		"prod-map-explorer-html": "just a visual reporesentation of the above list (note: zoom out in the browser for a better view)",
@@ -139,6 +143,7 @@
 		"@types/semver": "^7.3.9",
 		"@types/strip-comments": "^2.0.1",
 		"@types/vscode": "^1.64.0",
+		"@vscode/codicons": "^0.0.32",
 		"clean-terminal-webpack-plugin": "^3.0.0",
 		"clean-webpack-plugin": "^4.0.0",
 		"copy-webpack-plugin": "^10.1.0",
@@ -148,8 +153,6 @@
 		"source-map-explorer": "^2.5.2",
 		"ts-loader": "^9.2.6",
 		"vsce": "^2.3.0",
-		"vscode-codicons": "^0.0.17",
-		"vscode-test": "^1.6.1",
 		"webpack": "^5.64.0",
 		"webpack-cli": "^4.9.1"
 	},

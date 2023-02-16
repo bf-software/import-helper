@@ -7,7 +7,7 @@ qt.module( () => {
 
     function test(sourceLine:string, shouldExist:false):void;
     function test(sourceLine:string, text:string, startPos:number, isSymbol:boolean):void;
-      function test(sourceLine:string, textOrExists:string|boolean, startPos:number = 0, isSymbol:boolean = false):void {
+      function test(sourceLine:string, textOrExists:string|boolean, startPos:number = 0, isDefinitelyASymbol:boolean = false):void {
       let shouldExist = true;
       let text = '';
       if (typeof textOrExists == 'boolean')
@@ -31,6 +31,7 @@ qt.module( () => {
         if (identifier) {
           qt.testValue(identifier!.text).shouldEqual(text);
           qt.testValue(identifier.startPos-100).shouldEqual(startPos);
+          qt.testValue(identifier.isDefinitelyASymbol).shouldEqual(isDefinitelyASymbol);
         }
       } else {
         qt.testValue(identifier).shouldBeUndefined;
@@ -38,11 +39,11 @@ qt.module( () => {
     }
 
 
-    qt.Otest('getSearchIdentifierNearCursor', () => {
+    qt.test('getSearchIdentifierNearCursor', () => {
 
           //          1111111111222222222233333333334
           //01234567890123456789012345678901234567890
-      test('export class Abc|.defg', 'Abc', 13, true);
+      test('export class Abc|.defg', 'Abc', 13, false);
 
           //          1111111111222222222233333333334
           //01234567890123456789012345678901234567890
@@ -58,7 +59,7 @@ qt.module( () => {
 
           //          1111111111222222222233333333334
           //01234567890123456789012345678901234567890
-      test('class Whatever extends |', 'Whatever', 6, true);
+      test('class Whatever extends |', 'Whatever', 6, false);
 
           //          1111111111222222222233333333334
           //01234567890123456789012345678901234567890
@@ -97,7 +98,7 @@ qt.module( () => {
 
           //          1111111111222222222233333333334
           //01234567890123456789012345678901234567890
-      test('export class Te|st extends Nice', 'Test', 13, true); // that's an unlikely one, but this is not that smart...
+      test('export class Te|st extends Nice', 'Test', 13, false); // that's an unlikely one, but this is not that smart...
 
           //          1111111111222222222233333333334
           //01234567890123456789012345678901234567890

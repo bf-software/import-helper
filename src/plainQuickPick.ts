@@ -39,6 +39,14 @@ export class PlainQuickPickItem implements vscode.QuickPickItem {
   public kind: vscode.QuickPickItemKind | undefined;
 
   /**
+   * descendents should override this to provide a specific comparison to
+   * other quick pick items.
+   */
+  public isSameAs(otherQpi:vscode.QuickPickItem):boolean {
+    return false;
+  }
+
+  /**
   * @deprecated `kind = QuickPickItemKind.Separator` should now be used instead
   */
   public hasSeparatorLine: boolean = false;
@@ -243,6 +251,14 @@ export class PlainQuickPick<T extends vscode.QuickPickItem> implements vscode.Qu
 
   public set items(items: readonly T[]) {
     this.quickPick.items = items;
+  }
+
+
+  public itemByQpi(otherQpi:PlainQuickPickItem): T | undefined {
+    for (let item of this.items)
+      if (otherQpi.isSameAs(item))
+        return item;
+    return undefined;
   }
 
 

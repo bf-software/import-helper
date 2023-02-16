@@ -55,7 +55,7 @@
 import { URL } from 'url';
 import * as fs from 'fs';
 import * as nodePath from 'path';
-import { promises as fsp } from 'fs';
+import * as fsp from 'fs/promises';
 
 import * as ss from './systemSupport';
 import * as cs from './collectionSupport';
@@ -75,9 +75,29 @@ export class CommandLineParams extends cs.FfArray<string> {
     }
   }
 
-  public byText(text:string): cs.FfArrayFound<string> | undefined {
-    return this.byFunc( param => ss.sameText(param,text));
+  public paramExists(param:string): boolean {
+    return Boolean(this.byFunc(p => ss.sameText(p,param)));
   }
+
+  public byText(text: string) {
+    return this.byFunc((value) => value == text);
+  }
+
+  public byTextCaseInsensitive(text: string) {
+    return this.byFunc((value) => ss.sameText(value, text));
+  }
+
+  /**
+   * returns the value from a command line parameter formatted like so:
+   * `name=value`
+   * if value has double quotes, they will be removed.
+   * example command line:
+   * `--switch1=a -switch2="b" switch3="a b"`
+   * getValue('--switch1') // 'a'
+   */
+  // public getValue(name:string): string | undefined {
+  // }
+
 }
 
 
@@ -126,6 +146,12 @@ export function getEntryPointFile() {
   return file;
 }
 
+/**
+ * returns the path (i.e the containing folder) of the `.js` entry point script passed to node or electron.
+ */
+export function getEntryPointPath() {
+  return ss.extractPath(getEntryPointFile());
+}
 
 // files and paths /////////////////////////////////////////////////////////////////////////////
 

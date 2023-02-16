@@ -56,6 +56,7 @@ import { projects } from './project';
 // (global as any).$docs = docs;
 // (global as any).$globals = vs.globals;
 
+
 let addImportUI = new ImportHelperUi();
 
 export function activate(context: vscode.ExtensionContext) {

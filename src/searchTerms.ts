@@ -62,6 +62,7 @@ export class ModuleSearchTerms extends cs.FfArray<ModuleSearchTerm> {
 			return;
 		}
 
+    searchText = searchText.replaceAll('.',' .');
     searchText = searchText.replaceAll('\'',' \'');
     searchText = searchText.replaceAll('{',' {');
     searchText = searchText.replaceAll('/',' /');

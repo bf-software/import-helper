@@ -30,6 +30,7 @@ import * as ss from './systemSupport';
 import * as nodePath from 'path';
 import * as url from 'url';
 import * as ns from './nodeSupport';
+import * as es from './eventSupport';
 
 interface OriginalLocation {
   file: string,
@@ -62,6 +63,15 @@ export class ErrorSettings {
   public showBootstrapStack = false;
   public entryPointFile = ns.getEntryPointFile();
   public postBootstrapEntryPointFile = '';
+  /**
+   * in addition to sending the error to console.log(), this gets called to provide an opportunity to
+   * send the error in an application specific way
+   */
+  public onLogError = new es.Event<string>();
+  /**
+   * before the error message is shown, this provides a opportunity for the app to add to or delete parts of the message
+   */
+  public onModifyErrorMessage = new es.Event<string,string>();
   public get entryPointPath():string {
     return ss.extractPath(this.entryPointFile);
   }
@@ -88,7 +98,7 @@ export interface InitEntryPointOptions {
     if errorSupport.ts is producing relative links in it's stack trace that vscode can't find when you click on them, try setting this option.
 
     vscode uses it's open project folder as the root of clickable relative paths in the debug console.  Set this to a relative path that
-    takes you from the path of your running application's entry point, to the open folder in vscode. For example, if you have this
+    takes you from the path of your **running application's** entry point, to the open folder in vscode. For example, if you have this
     structure:
     ```
     /myProjects
@@ -134,7 +144,6 @@ export function initEntryPoint(options?:InitEntryPointOptions) {
 export interface StackFormatOptions {
   startFunc?:(item:StackItem) => boolean;
   filterFunc?:(item:StackItem) => boolean;
-  stopFunc?:(item:StackItem) => boolean;
   showBootstrapStack?:boolean;
 }
 
@@ -181,7 +190,7 @@ let sourceLocators = new cs.FfMap<string,SourceLocator>();
  *
  */
 export function getFunctionName(item:StackItem) {
-  return ss.concatWS('.',item.className, ss.suffix(item.functionName ?? '','()') );
+  return ss.separate('.',item.className, ss.suffix(item.functionName ?? '','()') );
 }
 
 export function getCodeFile(item:StackItem): string {
@@ -215,40 +224,26 @@ export function getCodeLocation(itemOrCodeFile:StackItem|string, codeLineColumn:
 
 /**
  * returns each line of a stack trace as a `call tree` where the top represents the root and
- * additional lines represent the leaves.  This is the opposite direction compared to the common way
- * of formatting stacks, that is, the caller is listed first, then the callee is listed below that
- * and so on. ex.
+ * additional lines represent the leaves:
  * ```
- * /node_modules/node/nodeBoostrapCode.js:5:21    something()
- * ⮡  /node_modules/node/nodeBoostrapCode.js:10:242  ⮡  anotherSomething()
- *  ⮡  /src/yourEntryPoint.ts                         ⮡  yourMain()
- *   ⮡  /src/yourLibrary.ts                            ⮡  yourFunction()
- *    ⮡   /node_modules/someThirdPartyLibrary.js        ⮡  thirdPartyFunction()
- *     ⮡   /node_modules/anotherThirdPartyLibrary.js     ⮡  anotherThirdPartyFunction()
+ *../relative/path/to/file.ts:10:20    start()
+ *⮡  ../relative/path/to/file.ts:10:20  ⮡ test()
+ * ⮡  ../relative/path/to/file.ts:10:20  ⮡ getvalue()
+ *  ⮡  ../relative/path/to/file.ts:10:20  ⮡ Converter.parse()
+ *   ⮡  ../relative/path/to/a/long/file-name.ts:10:20  ⮡ calculate()
+ *    ⮡  ../relative/short.ts:10:20                     ⮡ output()
+ * ```
  *
  * the first line of the stack represents the entry point into the app. Subequent lines indicate
  * additional calls in the call tree.  The last line represents the final call in the call
- * tree--usually the one that actually threw the error.
+ * tree--usually the one that caused the error.
  *
  * the file names are uniformly indented, with each subequent line becoming indented by one
  * character.
  *
- * the function calls are also indented the same way as long as the line above allows it.  If the
+ * the function calls will be indented the same way as long as the line above allows it.  If the
  * file path of the line above is very long, the indent of the function call will be pushed outward
  * so that subsequent functions are never indented less then the calling function.
- *
- * note that in any call stack there are items that are of little interest to the developer. Usually the
- * "bootstrap" code shows internal junk that the developer has no control over.  Additionally, the
- * particulars about errors thrown inside third party libraries may not be all that useful. Use the
- * `options` parameter to control what is shown in the formatted stack.
- *
- * @param errorStack a stack preformatted by getMappedStack().  Stack arrays are always in reverse
- * call order -- which is the way javascript creates them. i.e., with the last call on top of the
- * stack and the first call on the bottom. (The opposite of the format order.)
- *
- * @param options a list of options that control where the error stack starts and ends, and provides
- * the ability to filter the stack.
- *
  */
 export function formatErrorStack(errorStack:cs.FfArray<StackItem>, options?:StackFormatOptions):string {
   options = options ?? {};
@@ -258,13 +253,13 @@ export function formatErrorStack(errorStack:cs.FfArray<StackItem>, options?:Stac
   let result = '';
 
   if (options?.startFunc) {
-    let startFound = errorStack.byFuncReverse( options.startFunc );
+    let startFound = errorStack.byFunc( options.startFunc );
     if (startFound)
       found = startFound;
   } else if (!options.showBootstrapStack) {
     if (settings.postBootstrapEntryPointFile == '')
       result += '{showing bootstrap code in stack -- use initEntryPoint() to hide}\n';
-    let startFound = errorStack.byFuncReverse( (item) => (item.originalLocation?.file ?? item.file) == settings.postBootstrapEntryPointFile );
+    let startFound = errorStack.byFunc( (item) => (item.originalLocation?.file ?? item.file) == settings.postBootstrapEntryPointFile );
     if (startFound)
       found = startFound;
   }
@@ -277,10 +272,6 @@ export function formatErrorStack(errorStack:cs.FfArray<StackItem>, options?:Stac
       if (options?.filterFunc)
         if (!options.filterFunc(item))
           continue;
-
-      if (options?.stopFunc)
-        if (!options.stopFunc(item))
-          break;
 
       let resultLine = '';
       if (line > 0)
@@ -310,6 +301,8 @@ export function formatErrorStack(errorStack:cs.FfArray<StackItem>, options?:Stac
   // see: https://github.com/nodejs/node/issues/30944
   if (result == '')
     result = `<no error stack>${errorStack.length ? ' (actual error stack had items, but was filtered)' : ''}\n`;
+
+  result = ss.endWithNewline(result);
 
   return result;
 }
@@ -413,7 +406,7 @@ export function getFullErrorMessage(e: any, options?:StackFormatOptions) {
   if (! (e instanceof Error)) {
     let result = L`
       [Error Type: ${typeof e}]
-      ${String(e)}
+      ${String(e).trimEnd()}
     `
     return result;
   }
@@ -429,9 +422,10 @@ export function getFullErrorMessage(e: any, options?:StackFormatOptions) {
 
   let result = L`
     [${e.name}]
-    ${e.message}
+    ${e.message.trimEnd()}
   `;
 
+  result += '\n[stack]\n';
   let mappedStack = getMappedStack((e as ESError).unmappedStack);
   if (mappedStack)
     result += formatErrorStack(mappedStack, options);
@@ -441,24 +435,34 @@ export function getFullErrorMessage(e: any, options?:StackFormatOptions) {
   return result;
 }
 
+export function logError(title:string, e:any) {
+  let errorMessage = ss.infix('\n↓ ',title,' ↓\n\n');
+
+  errorMessage += getFullErrorMessage(e);
+
+  errorMessage = ss.endWithNewline(errorMessage);
+
+  errorMessage = settings.onModifyErrorMessage.cue(errorMessage,errorMessage);
+
+  settings.onLogError.cue(errorMessage);
+
+  console.log(errorMessage);
+}
+
+
 // Initialization -------------------------------------------------------------------------------------------------
 
 
-// Note: in node, this completely replaces the default unhandled exception.  However, in electron, this only stops
+// Note: in node, this completely replaces the default unhandled exceptions.  However, in electron, this only stops
 // the popup window, the console will still get a default error stack dump.  We take care of suppressing the
 // electron dump by removing the error stack entirely from the thrown exception, and instead keep it in our
 // own `unmappedStack` variable.
 process.on('uncaughtException', (e) => {
-  console.log('↓ uncaught exception ↓');
-  console.log(getFullErrorMessage(e))
+  logError('uncaught exception',e);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.log('↓ unhandled rejection ↓');
-  if (reason instanceof Error)
-    console.log(getFullErrorMessage(reason));
-  else
-    console.log(reason);
+  logError('unhandled rejection', reason);
 });
 
 Error.prepareStackTrace = (error, structuredStackTrace) => {

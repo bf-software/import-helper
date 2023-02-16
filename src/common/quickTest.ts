@@ -395,14 +395,11 @@ class Test extends ChildTestItem {
       let message;
       let stack;
       let unmappedStack:cs.FfArray<es.StackItem> | undefined;
-      let formatOptions:es.StackFormatOptions;
       if (this.isException) {
-        formatOptions = cQuickTestStackExceptionFormatOptions;
         stack = this.exceptionError!.stack; // <-- keep this ununsed assignment here, it allows es.getMappedStack() to get the stack.
         message = `${this.exceptionError!.name}: ${this.exceptionError!.message}\n`;
         unmappedStack = (this.exceptionError as any).unmappedStack;
       } else {
-        formatOptions = cQuickTestStackFormatOptions;
         stack = this.testValueError!.stack; // <-- keep this ununsed assignment here, it allows es.getMappedStack() to get the stack.
         message = this.testValueError!.message;
         unmappedStack = (this.testValueError as any).unmappedStack;
@@ -411,7 +408,7 @@ class Test extends ChildTestItem {
       let mappedStack = es.getMappedStack(unmappedStack);
       let codeLocation = es.getCodeLocation(this.codeFile, this.codeLineColumn);
       if (mappedStack && mappedStack.length)
-        result += this.indent(this.indent('at: ' + ch.grey(es.formatErrorStack(mappedStack,formatOptions)), [0,4]), cIndentSizeInCharacters);
+        result += this.indent(this.indent('at: ' + ch.grey(es.formatErrorStack(mappedStack,cQuickTestStackFormatOptions)), [0,4]), cIndentSizeInCharacters);
       else
         result += this.indent(this.indent('at: ' + ch.grey(codeLocation + '  |  note: error did not have a stack trace'), [0,4]), cIndentSizeInCharacters);
 
@@ -619,7 +616,18 @@ export function deepEqual(a:any, b:any, propertyPath:string=''):DeepEqualResult 
     throw Error('unknown property type: {…}.'+propertyPath)
   }
 
-  if ((a as Object).constructor !== (a as Object).constructor) {
+  if ((a as Object) == null || (b as Object) == null) {
+    if ((a as Object) == null && (b as Object) == null)
+      result.isEqual = true;
+    else {
+      result.aValue = (a == null ? 'null' : String(a)+' <instance of '+(a as Object).constructor.name+'>');
+      result.bValue = (b == null ? 'null' : String(b)+' <instance of '+(b as Object).constructor.name+'>');
+    }
+    result.property = propertyPath;
+    return result;
+  }
+
+  if ((a as Object).constructor !== (b as Object).constructor) {
     result.isEqual = false;
     result.property = propertyPath;
     result.aValue = String(a)+' <instance of '+(a as Object).constructor.name+'>';
@@ -670,8 +678,8 @@ class ValueTester {
     property = ss.infix('{…}.',property,': ');
     let maxLength = Math.max(testValueLabel.length,shouldBeLabel.length);
     throw new TestValueError(L`
-      ${cShouldBeIcon} ${shouldBeLabel.padEnd(maxLength,' ')} ${property}${ss.indent(this.format(String(shouldBeValue)),[0,2+maxLength+2+property.length],cIndentCharacter)}
-      ${cBadValueIcon} ${testValueLabel.padEnd(maxLength,' ')} ${property}${ss.indent(this.format(String(testValue)),[0,2+maxLength+2+property.length],cIndentCharacter)}
+      ${cShouldBeIcon} ${shouldBeLabel.padEnd(maxLength,' ')} ${property}${ss.indent(this.format(shouldBeValue),[0,2+maxLength+2+property.length],cIndentCharacter)}
+      ${cBadValueIcon} ${testValueLabel.padEnd(maxLength,' ')} ${property}${ss.indent(this.format(testValue),[0,2+maxLength+2+property.length],cIndentCharacter)}
     `)
   }
 
@@ -710,7 +718,7 @@ class ValueTester {
   }
 
   /**
-   * uses checks that every member and element are strictly equal to each other.  This will fail as soon
+   * checks that every element (if an array) or member & value (if an object) are strictly equal to each other.  This will fail as soon
    * as the first item doesn't match.
    */
   public shouldDeepEqual(expectedValue:any) {
@@ -728,6 +736,11 @@ class ValueTester {
           'should equal'
         );
     }
+  }
+
+  public shouldBeGreaterThan(expectedValue: any) {
+    if (! (this.testValue > expectedValue) )
+      this.valueError('',this.testValue,expectedValue,'should be greater than');
   }
 
 
@@ -1064,8 +1077,28 @@ export function Otest(name:string, testFunc:TestFunc) {
 }
 
 /**
-* tests a value
-*/
+ * tests a value
+ *
+ * examples:
+ *
+ * ```
+ * // [simple boolean test]
+ * qt.testValue(isFound).shouldBeFalse;
+ * // The code above should be read as: "The test value 'isFound' should be false." (falsy actually)
+ *
+ * // [simple integer test]
+ * qt.testValue(foundCount).shouldEqual(5);
+ * // The code above should be read as: "The test value 'foundCount' should equal 5."
+ *
+ * // [async error checking]
+ * await qt.testValue( async ()=> {
+ *   let x = await ss.loadStringFromFile('notHere.txt');
+ * }).shouldThrowError('no such file');
+ * // The code above should be read as: "the asyncronous code inside the test
+ * // value function should throw an error containing 'no such file'
+ * // in the error message."
+ * ```
+ */
 export function testValue(value:any):ValueTester {
   return new ValueTester(value);
 }
@@ -1086,21 +1119,12 @@ function log(s:string, options?:{endWithNewLine?:boolean}) {
   }
 }
 
-/**
- * the idea is that
- */
 const cQuickTestStackFormatOptions:es.StackFormatOptions = {
   startFunc:(item) => {
     return isTestExt(ss.extractFileExt(ss.removeFileExt(item.originalLocation?.file ?? '')));
   },
   filterFunc: (item) => {
     return ss.extractFileName(item.originalLocation?.file ?? '') != 'quickTest.ts';
-  }
-}
-
-const cQuickTestStackExceptionFormatOptions:es.StackFormatOptions = {
-  startFunc:(item) => {
-    return isTestExt(ss.extractFileExt(ss.removeFileExt(item.originalLocation?.file ?? '')));
   }
 }
 

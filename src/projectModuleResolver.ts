@@ -54,7 +54,7 @@ export class ProjectModuleResolver {
    * `anyModuleSpecifier` param.  This uses typescript's node module resolution algorithm to
    * gather the files.  The algorithms are as follows:
    *
-   * [relative& absolute module specifiers]
+   * [relative & absolute module specifiers]
    *
    * note: absolute module specifiers do the same thing as relative, but they don't heed `rootDirs`
    *
@@ -319,7 +319,7 @@ export class ProjectModuleResolver {
 
   private recursiveFlattenExports(exports:any, locationInfo:string = '') {
     for (let exportItem in exports) {
-      let newLocationInfo = ss.concatWS('.',locationInfo,exportItem);
+      let newLocationInfo = ss.separate('.',locationInfo,exportItem);
       if (typeof exports[exportItem] == 'string') {
         let file:string = exports[exportItem];
         let found = this.exportFiles.byKey(file);

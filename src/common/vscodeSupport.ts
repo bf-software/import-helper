@@ -142,11 +142,18 @@ export function showTextDocument(file:string, position?:vscode.Position, viewCol
   vscode.window.showTextDocument(vscode.Uri.file(file),options);
 }
 
+/**
+ * the location of a character in a multi-line string.  The position is considered to be a 0 based index.
+ * Also, both `line` and `column` are 0 based.
+ */
 export class Location {
   constructor(
+    /** a 0 based index of a character in a string */
     public position:number = 0,
-    public line:number = 0,
-    public column:number = 0
+    /** a 0 based line number in a string */
+    public line:number = 1,
+    /** a 0 based column number in a string */
+    public column:number = 1
   ) {
   }
 }

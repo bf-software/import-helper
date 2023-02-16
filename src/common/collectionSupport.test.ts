@@ -244,6 +244,21 @@ qt.module( () => {
       qt.testValue(found).shouldBeUndefined;
     });
 
+    qt.test('deleting in loop', () => {
+      let m = new cs.FfMap<number,string>([
+        [1,'one'],[2,'two'],[3,'three'],[4,'four']
+      ]);
+      for (let [key,value] of m) {
+        if (value == 'two' || value == 'three')
+          m.delete(key);
+      }
+      qt.testValue(m.size).shouldEqual(2);
+      qt.testValue(m.byKey(2)).shouldBeFalse;
+      qt.testValue(m.byKey(3)).shouldBeFalse;
+      qt.testValue(m.byKey(4)).shouldBeTrue;
+
+    });
+
   });
 
 
@@ -440,4 +455,26 @@ qt.module( () => {
 
   });
 
+
+  qt.section('weighted sorting', () => {
+    let example = [
+      {name:'joe', test1:85, test2:77, final:89,  daysAbsent:2},
+      {name:'bob', test1:65, test2:88, final:95,  daysAbsent:4},
+      {name:'sue', test1:87, test2:89, final:100, daysAbsent:9}
+    ];
+
+    qt.test('ranges', () => {
+      let weightedSort = new cs.WeightedSort<typeof example[0]>();
+      weightedSort.addCriterian(20, (item) => item.test1, {name: 'test1'} );
+      weightedSort.addCriterian(30, (item) => item.test2, {name: 'test2'} );
+      weightedSort.addCriterian(50, (item) => item.final, {name: 'final'} );
+      weightedSort.addCriterian(10, (item) => item.daysAbsent, {name: 'daysAbsent', lowerIsBetter: true} );
+      weightedSort.prepare(example);
+      // for (let item of example) {
+      //   console.log(item.name);
+      //   console.log(ss.indent(weightedSort.getDebugGrid(item),'  '));
+      // }
+      qt.testValue(weightedSort.getScore(example[0]).totalScore.toFixed(2)).shouldEqual('28.18');
+    });
+  });
 });

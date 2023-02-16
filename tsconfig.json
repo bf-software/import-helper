@@ -23,7 +23,7 @@
 
       "outDir": "out",
 
-    // "baseUrl": ".",
+    // "baseUrl": "./src",
   	// "paths": {
 	 	//   "wowzers/*": [
 	 	//     "./src/other/*"

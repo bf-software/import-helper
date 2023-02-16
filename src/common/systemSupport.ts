@@ -144,6 +144,164 @@ export function frac(num:number) {
 }
 
 /**
+ * does a left shift and makes sure to return an unsigned int 32 number.
+ * (by default the javascript << operator returns *signed* int32 numbers)
+ */
+export function uInt32ShiftLeft(uint32:number, shiftCount:number):number {
+  return (((uint32 >>> 0) << shiftCount) >>> 0);
+}
+
+
+export function getDecimalSeparator(locale?:string) {
+  const numberWithDecimalSeparator = 1.1;
+  let parts = Intl.NumberFormat(locale).formatToParts(numberWithDecimalSeparator);
+  return parts.find(part => part.type === 'decimal')?.value ?? '.';
+}
+
+export function getThousandsSeparator(locale = '') {
+  const numberWithThousandsSeparator = 1000;
+  let parts = Intl.NumberFormat(locale).formatToParts(numberWithThousandsSeparator);
+  return parts.find(part => part.type === 'group')?.value ?? ',';
+}
+
+
+/**
+ * returns a javascript number in a special unsigned 32 bit mode.
+ *
+ * Ex: normally, in javascript this:
+ *   - `0b1111_1111_1111_1111_1111_1111_1111_1111 << 1` returns `-2`
+ *
+ * (which is really: `0b1111_1111_1111_1111_1111_1111_1111_1110`, but expressed as a two's compliment negative number.)
+ *
+ * but:
+ *   - numberAsUInt32(0b1111_1111_1111_1111_1111_1111_1111_1111 << 1) returns `4294967294`
+ *
+ * (which is also really: `0b1111_1111_1111_1111_1111_1111_1111_1110`, but now it will be expressed as an unsigned 32 bit positive number.)
+ */
+export function numberToUInt32(n:number) {
+  return n >>> 0; // <-- trick to create an unsigned 32bit integer number
+}
+
+/**
+ * returns a 64 bit bigint where the bits greater than 64 are clipped.
+ *
+ * Ex: normally, in javascript this:
+ *   - `((2n ** 64n) - 1n) << 1n` returns `36,893,488,147,419,103,230n`
+ *
+ * (which is really: the 65 bit bigint: `11111111111111111111111111111111111111111111111111111111111111110`)
+ *
+ * but:
+ *   - bigIntToUInt64(((2n ** 64n) - 1n) << 1n) returns `18,446,744,073,709,551,614n`
+ *
+ * (which is really: the 64 bit bigint: `1111111111111111111111111111111111111111111111111111111111111110`)
+ */
+export function bigIntToUInt64(n:bigint) {
+  return BigInt.asUintN(64, n); // <-- creates an unsigned 64bit bigint
+}
+
+
+/**
+ * returns a 128 bit bigint where the bits greater than 128 are clipped.
+ * see `@link bigIntToUInt64`() for an example.
+ */
+export function bigIntToUInt128(n:bigint) {
+  return BigInt.asUintN(128, n); // <-- creates an unsigned 128bit bigint
+}
+
+/**
+ * holds a 32 bit unsigned integer value
+ */
+export class UInt32 {
+  private _value: number = 0;
+
+  constructor(value:number) {
+    this.value = value;
+  }
+
+  /**
+   * guaranteed to be an unsigned 32 bit integer
+   */
+  public get value(): number {
+    return this._value;
+  }
+  public set value(value: number) {
+    this._value = numberToUInt32(value);
+  }
+  public get asBinaryString() {
+    return this._value.toString(2).padStart(32,'0');
+  }
+  public shiftRight(count:number):this {
+    return new (this.constructor as any)(this.value >>> count);
+  };
+  public shiftLeft(count:number) {
+    return new (this.constructor as any)(this.value << count);
+  };
+  public isGreaterThan(uInt32:this) {
+    return this.value > uInt32.value;
+  };
+  public isGreaterThanOrEqualTo(uInt32:this) {
+    return this.value >= uInt32.value;
+  };
+  public isLessThan(uInt32:this) {
+    return this.value < uInt32.value;
+  };
+  public isLessThanOrEqualTo(uInt32:this) {
+    return this.value <= uInt32.value;
+  };
+  public equals(uInt32:this) {
+    return this.value == uInt32.value;
+  };
+}
+
+
+/**
+ * holds a 128 bit unsigned bigint
+ */
+export class UInt128 {
+  private _value: bigint = 0n;
+
+  constructor(value:bigint|number) {
+    this.value = BigInt(value);
+  }
+
+  /**
+   * guaranteed to be an unsigned 128 bit bigint
+   */
+  public get value(): bigint {
+    return this._value;
+  }
+  public set value(value: bigint) {
+    this._value = bigIntToUInt128(value);
+  }
+  public get asBinaryString() {
+    return this._value.toString(2).padStart(128,'0');
+  }
+  public shiftRight(count:number):this {
+    return new (this.constructor as any)(this.value >> BigInt(count));
+  };
+  public shiftLeft(count:number) {
+    return new (this.constructor as any)(this.value << BigInt(count));
+  };
+  public isGreaterThan(uInt64:this) {
+    return this.value > uInt64.value;
+  };
+  public isGreaterThanOrEqualTo(uInt64:this) {
+    return this.value >= uInt64.value;
+  };
+  public isLessThan(uInt64:this) {
+    return this.value < uInt64.value;
+  };
+  public isLessThanOrEqualTo(uInt64:this) {
+    return this.value <= uInt64.value;
+  };
+  public equals(uInt64:this) {
+    return this.value == uInt64.value;
+  };
+}
+
+
+
+/**
  * returns the digit at the position in the number.  A negative position will count starting from the right
  * of the number.  Examples:
  * ```
@@ -157,6 +315,9 @@ export function digitAt(num:number|bigint, position:number) {
 }
 
 
+/**
+ * (inclusive)
+ */
 export function isBetween(x:number, low:number, high:number):boolean {
   return x >= low && x <= high;
 }
@@ -165,6 +326,33 @@ export function decimalCount(value:number) {
   if (Math.floor(value) !== value)
     return value.toString().split(".")[1].length || 0;
   return 0;
+}
+
+/**
+ * wraps a number within a range of numbers.  If `n` is greater than the range, it will wrap back to
+ * the start, and if it less, it will wrap back to the end. Multiple wraps can occur if the `n` is
+ * greater or less then the range by an amount larger than the range's width.
+ * ex.
+ *   wrapNumber(11, 1, 10); // returns 1
+ *   wrapNumber(15, 1, 10); // returns 5
+ *   wrapNumber(7, 0, 6);   // returns 0
+ *   wrapNumber(-2, 0, 6);  // returns 5
+ *   wrapNumber(12, 1, 5);  // returns 2, because 6=1, 10=5, 11=1, 12=2,
+ */
+export function wrapNumber(n:number, start:number, end:number) {
+  if (start > end)
+    throw Error('start must be <= end');
+  let rangeWidth = (end - start)+1;
+  if (n < start) {
+    let magnitude = Math.abs(start - n);
+    let afterMultipleWraps = magnitude % rangeWidth;
+    return (end - (afterMultipleWraps-1));
+  } else if (n > end) {
+    let magnitude = Math.abs(n - end);
+    let afterMultipleWraps = magnitude % rangeWidth;
+    return (start + (afterMultipleWraps-1));
+  }
+  return n;
 }
 
 export function times10ToThe(num:bigint, power:number):bigint {
@@ -178,15 +366,39 @@ export function times10ToThe(num:bigint, power:number):bigint {
 export function numberOrUndefined(num:number|string|undefined|null):number|undefined {
   if (isBlank(num))
     return;
-  if (typeof num == 'number')
-    return num;
-  return Number(num);
+  if (typeof num != 'number')
+    num = Number(num);
+  return (isNormalNumber(num) ? num : undefined);
 }
 
 export function stringOrUndefined(num:number|string|undefined|null):string|undefined {
   if (typeof num == 'undefined')
     return;
   return String(num);
+}
+
+export function countDigits(n:number) {
+  return String(n).length;
+}
+
+/**
+ * indicates if the bit in the bit position is set.
+ * example positions:
+ * ```
+ * isBitSet(35, 6) // true
+ *
+ * // in this example, bit 6 is set in the number 35:
+ * // 35 = 0b00100011
+ * //        87654321
+ *
+ * ```
+ */
+export function isBitSet(num:number, bitPosition:number) {
+  return (num & (1 << bitPosition-1)) > 0;
+}
+
+export function round(n:number,decimalPlaces:number):number {
+  return Math.round(n*(decimalPlaces*10))/(decimalPlaces*10);
 }
 
 
@@ -214,10 +426,10 @@ export function splice(s:string, index:number, deleteCount:number, addString:str
 }
 
 /**
- * concat with separator
+ * concatenate strings with with separators
  */
-//export function concatWS(separator:string, items:[]):string; // <-- dunno why this isn't ok....
-export function concatWS(separator:string, ...items:StringableRest):string {
+//export function separate(separator:string, items:[]):string; // not sure how to set this properly in typescript
+export function separate(separator:string, ...items:StringableRest):string {
   let result = '';
   let sep = '';
   if (typeof items[0] !== 'undefined' && Array.isArray(items[0]))
@@ -328,19 +540,19 @@ export function infix(pfx:string, s:string|undefined, sfx:string):string {
 }
 
 export function spaces(...items:StringableRest):string {
-  return concatWS(' ',...items);
+  return separate(' ',...items);
 }
 
 export function commas(...items:StringableRest):string {
-  return concatWS(',',...items);
+  return separate(',',...items);
 }
 
 export function commaSpaces(...items:StringableRest):string {
-  return concatWS(', ',...items);
+  return separate(', ',...items);
 }
 
 export function newLines(...items:StringableRest):string {
-  return concatWS('\n',...items);
+  return separate('\n',...items);
 }
 
 export function parens(s:string):string {
@@ -353,6 +565,51 @@ export function braces(s:string):string {
 export function brackets(s:string):string {
   return infix('[',s,']');
 }
+
+export function endWithNewline(s: string): string {
+  // let match = s.match(/\n$'/);
+  // if (match && typeof match.index == 'number')
+  //   return s.substring(0,match.index+1);
+  // return s+'\n';
+  return s.trimEnd()+'\n';
+}
+
+
+/**
+ * pads a string to the number of unicode characters specified.  Unicode strings with multiple byte characters (like emojis) will
+ * confound javascripts built in `String.padStart()`.
+ */
+export function unicodePadStart(s:string, length:number, padCharacter:string = ' ') {
+  let uLen = unicodeLength(s);
+  if (uLen >= length)
+    return s.substring(0, length);
+  return padCharacter.repeat(length - uLen) + s;
+}
+
+/**
+ * pads a string to the number of unicode characters specified.  Unicode strings with multiple byte characters (like emojis) will
+ * confound javascripts built in `String.padEnd()`.
+ */
+export function unicodePadEnd(s:string, length:number, padCharacter:string = ' ') {
+  let uLen = unicodeLength(s);
+  if (uLen >= length)
+    return unicodeSubstring(s, 0, length);
+  return s + padCharacter.repeat(length - uLen);
+}
+
+
+/**
+ * returns the substring taking into unicode multiple byte characters into consideration
+ * @param start starting character position
+ * @param end the position of the last character returned (** not including that character!).  This
+ * assumes the rest of the string if not specified.
+ */
+export function unicodeSubstring(s:string, start:number, end?: number) {
+  let sArray = [...s];
+  end = end ?? sArray.length;
+  return sArray.filter((value, i) => (i >= start && i < end! ? value : undefined) ).join('');
+}
+
 
 /**
  * returns the `count` number of characters from the beginning of `s`
@@ -370,14 +627,25 @@ export function end(s:string,count:number) {
 
 export function trimStartChars(s:string, chars:string[]):string {
   chars = chars.map( ch => escapeRegex(ch) );
-  let regex = new RegExp('^('+concatWS('|',chars)+')+','g');
+  let regex = new RegExp('^('+separate('|',chars)+')+','g');
   return s.replace(regex,'');
 }
 
-export function trimEndChars(s:string, chars:string[]):string {
+/**
+ * trims the specified characters off of the end of a string, optionally until a `minLength` is reached.
+ */
+export function trimEndChars(s:string, chars:string[], minLength?:number):string {
+  if (typeof minLength == 'undefined')
+    minLength = 0;
   chars = chars.map( ch => escapeRegex(ch) );
-  let regex = new RegExp('('+concatWS('|',chars)+')+$','g');
-  return s.replace(regex,'');
+  let regex = new RegExp('('+separate('|',chars)+')+$','g');
+  let match = s.match(regex);
+  if (match && match[0]) {
+    let trimLength = match[0].length;
+    let newLength = noLowerThan(minLength, s.length - trimLength)
+    return s.substring(0, newLength);
+  }
+  return s;
 }
 
 export function trimStartStr(s:string, trimString:string, caseSensitive:boolean = false) {
@@ -391,7 +659,7 @@ export function trimStartStr(s:string, trimString:string, caseSensitive:boolean 
  */
 export function getEndChars(s:string, chars:string[]):string {
   chars = chars.map( ch => escapeRegex(ch) );
-  let regex = new RegExp('('+concatWS('|',chars)+')+$','g');
+  let regex = new RegExp('('+separate('|',chars)+')+$','g');
   let match = s.match(regex);
   if (match)
     return match[0]
@@ -438,51 +706,96 @@ export function hasEllipsis(s:string):boolean {
   return s.indexOf('…') > -1;
 }
 
-/**
- *  capitalize the first letter of a string
- *
- *  from: https://stackoverflow.com/questions/1026069/how-do-i-make-the-first-letter-of-a-string-uppercase-in-javascript
- */
+
 export function capitalize(s:string) {
-  let code = s.charCodeAt(0) | 0;
-  return (
-    code >= 0xD800 && code <= 0xDBFF ? // Detect surrogate pair
-      s.slice(0,2).toLocaleUpperCase() + s.substring(2) :
-      s.charAt(0).toLocaleUpperCase() + s.substring(1)
-  );
+  let firstCP = s.codePointAt(0) ?? 0;
+  let i = firstCP > 0xFFFF ? 2 : 1;
+
+  return String.fromCodePoint(firstCP).toUpperCase() + s.slice(i);
 }
+
+export function isWhitespace(s:string):boolean {
+  return Boolean(s.match(/\s+/));
+}
+
+/**
+ * returns the last word in the text string.  It also includes any trailing whitespace in `trailingWhitespace`.
+ */
+export function getLastWord(s:string) {
+  let match = s.match(/([^\s]+)(\s*)$/);
+  let result = {lastWord:'', trailingSpace:''};
+  if (match) {
+    result.lastWord = match[1] ?? '';
+    result.trailingSpace = match[2] ?? '';
+  }
+  return result;
+};
+
 
 export function byteToString(byte:number):string {
   return String.fromCharCode(byte)
 }
 
-export function numberToString(num:number | bigint):string {
-  return num.toLocaleString('fullwide',{useGrouping:false,maximumFractionDigits:20});
-}
 
-export function round(n:number,decimalPlaces:number):number {
-  return Math.round(n*(decimalPlaces*10))/(decimalPlaces*10);
+export function numberToString<T extends string|undefined>(num:number | bigint | undefined, defaultString?:T):T {
+  if (typeof num == 'undefined' || (typeof num == 'number' && isNaN(num)) )
+    //@ts-ignore: typescript is a pain sometimes
+    return defaultString;
+  //@ts-ignore: waitng for typescript to have an `is` constraint, not just an `extends`
+  return num.toLocaleString('fullwide',{useGrouping:false,maximumFractionDigits:20});
 }
 
 
 /**
-* counts the number of lines that would be visible if the string was pasted into an editor
-* - emmpty string = 1
-* - a string without any newline = 1
-* - a string with one new line at the end = 2
-*/
+ * counts the number of lines that would be visible if the string was pasted into an editor
+ * - empty string = 1
+ * - a string without any newline = 1
+ * - a string with one new line at the end = 2
+ */
 export function countLines(s:string):number {
   return (s.split(/\r\n|\r|\n/).length);
 }
 
 /**
- * returns the line and character position of the index taking newlines into consideration
+ * @param s the string
+ * @param position a 0 based position into the string
+ * @returns the line and column numbers of the supplied `position`, taking newlines into consideration.  Both the
+ *  `line` and `column` are also considered to be 0 based.
  */
-export function indexToCoorinates(s:string, index:number):{line:number, character:number} {
-  let beginningText = s.substr(0,index);
+export function positionToLineColumn(s:string, position:number):{line:number, column:number} {
+  let beginningText = s.substr(0,position);
   let line = (beginningText.match(/\n/g)?.length ?? 0);
-  let character = beginningText.length - beginningText.search(/(\n).*$/) - 1;
-  return {line, character};
+  let column = beginningText.length - beginningText.search(/(\n).*$/) - 1;
+  return {line, column};
+}
+
+/**
+ * example:
+ * ```
+ * let s =
+ * `line 0
+ * line 1
+ * line 2`;
+ * ```
+ * s.charAt(lineColumnToPosition(s, 2, 0)) returns 'l'
+ *
+ * @param s the string
+ * @param line a 0 based line number
+ * @param column a 0 based column number
+ * @returns the 0 based position based on the supplied line and column numbers, taking newlines into consideration.
+ */
+export function lineColumnToPosition(s:string, line: number, column: number): number {
+  let lines = stringToLines(s);
+  let result = column;
+  for (let i = line-1; i >= 0; i--) {
+    result += lines[i].line.length + lines[i].newLine.length;
+  }
+  return result;
+}
+
+export function stringToPrintableString(s:string):string {
+  let array = (new TextEncoder()).encode(s);
+  return bufferToPrintableString(array);
 }
 
 export function byteToPrintableString(byte:number):string {
@@ -631,12 +944,38 @@ export function stringToLines(s:string):{line:string, newLine:string}[] {
    return result;
 }
 
+export function addLineNumbers(sql: string) {
+  let result = '';
+  let lines = stringToLines(sql);
+  let maxDigits = countDigits(lines.length);
+  let i = 1;
+  for (let line of lines) {
+    result += String(i++).padStart(maxDigits,' ') + '| ' + line.line + line.newLine;
+  }
+  return result;
+}
+
+
+export function isNormalNumber(n:number):boolean {
+  return (typeof n == 'number' && !isNaN(n) || isFinite(n));
+}
+
 /**
  * same as parseInt(), except it returns undefined instead of NaN
  */
 export function stringToInt(s:string):number|undefined {
   let result = parseInt(s);
-  if (isNaN(result))
+  if (!isNormalNumber(result))
+    return undefined;
+  return result;
+}
+
+/**
+ * same as parseFloat(), except it returns undefined instead of NaN
+ */
+export function stringToFloat(s:string):number|undefined {
+  let result = parseFloat(s);
+  if (!isNormalNumber(result))
     return undefined;
   return result;
 }
@@ -651,7 +990,9 @@ export function stringToIntOrFail(s: string, errorItem: string = 'string') {
   return result;
 }
 
-
+export function unicodeLength(s:string):number {
+  return [...s].length;
+}
 
 /**
  * indents each line in a multiline string.
@@ -723,7 +1064,7 @@ function defaultTemplateTag(templateStrings:TemplateStringsArray,...params:(stri
   let result = '';
   let i = 0;
   for (let s of templateStrings)
-    result += s + params[i++];
+    result += s + (params[i++] ?? '');
   return result;
 }
 
@@ -928,18 +1269,37 @@ export function U(templateStrings:TemplateStringsArray,...params:(string|number)
 }
 
 
-export function getDecimalSeparator(locale = '') {
-  const numberWithDecimalSeparator = 1.1;
-  let parts = Intl.NumberFormat(locale).formatToParts(numberWithDecimalSeparator);
-  return parts.find(part => part.type === 'decimal')?.value ?? '.';
-}
+export function buildTextGrid(grid: string[][], options?: { cellSeparator?: string, rowPrefix?: string, rowSuffix?: string; columnOptions?:any[] }): string {
+  let cellSeparator = options?.cellSeparator ?? '  ';
+  let rowPrefix = options?.rowPrefix ?? '';
+  let rowSuffix = options?.rowSuffix ?? '\n';
+  let columnOptions = options?.columnOptions;
+  let result = '';
+  if (grid.length == 0)
+    return '';
+  let columnWidths:number[] = (new Array(grid[0].length)).fill(0);
+  // first pass, determine max column widths
+  for (let row of grid)
+    for (let i=0; i < row.length; i++)
+      if (row[i].length > columnWidths[i])
+        columnWidths[i] = unicodeLength(row[i]);
+  // second pass, create the actual grid
+  for (let row of grid) {
+    result += rowPrefix;
+    let isFirst = true;
+    for (let i=0; i < row.length; i++) {
+      result += (isFirst ? '' : cellSeparator);
+      if (columnOptions && columnOptions[i]?.textAlign && columnOptions[i].textAlign == 'right')
+        result += unicodePadStart(row[i], columnWidths[i], ' ');
+      else
+        result += unicodePadEnd(row[i], columnWidths[i], ' ');
 
-export function getThousandsSeparator(locale = '') {
-  const numberWithThousandsSeparator = 1000;
-  let parts = Intl.NumberFormat(locale).formatToParts(numberWithThousandsSeparator);
-  return parts.find(part => part.type === 'group')?.value ?? ',';
+      isFirst = false;
+    }
+    result += rowSuffix;
+  }
+  return result;
 }
-
 
 export function removeChars(s:string, removeFunc:(ch:string) => boolean):string {
   let result = '';
@@ -956,7 +1316,7 @@ export function internalizeLineEndings(s:string):string {
   return s.replace(/\r\n/g, '\n');
 }
 
-export function parseFloatLocale(numericString:string, locale = '') {
+export function parseFloatLocale(numericString:string, locale?:string) {
   let decimalSeparator = getDecimalSeparator(locale);
   numericString = removeChars(numericString, ch => (ch < '0' || ch > '9') && ch != decimalSeparator && ch != '(' && ch != '-');
   let possibleNegativeSign = numericString.substr(1,1);
@@ -977,12 +1337,12 @@ export function parseFloatLocale(numericString:string, locale = '') {
  * @param locale used to interpret the `num` parameter if it's a formatted string, mainly to figure out the commas and
  * periods.  Leave blank to use the system's default locale.
  */
-export function sp(num:number | string, singluar:string, plural:string, locale = ''):string {
+export function sp(num:number | string, singluar:string, plural:string, locale?:string):string {
   let parsedNum:number;
   if (typeof num == 'number')
     parsedNum = num
   else
-    parsedNum = parseFloatLocale(num);
+    parsedNum = parseFloatLocale(num, locale);
   return String(num + (parsedNum == 1 ? singluar : plural));
 }
 
@@ -1026,8 +1386,16 @@ export function getNextNewlinePosR(s:string, startPos?:number) {
   return p;
 }
 
-
-
+/**
+ * returns a value properly escaped and delimited where needed
+ */
+export function formatCsvValue(value:string) {
+  if (value.includes('"'))
+    return '"' + replaceAll(value,'"','""') + '"';
+  else if (value.match(/[\n\r\,]/))
+    return '"'+value+'"';
+  return value;
+}
 
 // functions ////////////////////////////////////////////////////////////////
 export function def(param:any,defaultValue:any) {
@@ -1428,98 +1796,6 @@ export function binarySearch<T>(haystack: ArrayLike<T>, needle: T,  comparator: 
   };
 }
 
-// date & time ////////////////////////////////////////////////////////////////////////
-export function unixTime() {
-  return Math.floor(Date.now() / 1000);
-}
-
-export function unixTimeToDate(seconds:number):Date {
-  return new Date(seconds * 1000);
-}
-
-
-/**
- * returns the elapsed time in days hours minutes seconds and milliseconds where the units used
- * depend on the magnitude of the time input.
- * ex:
- * 1 day 2 hrs 53 min
- * 2 hrs 53 min
- * 10 min 30 sec
- * 18.52 sec
- * 259 msec
- */
-export function elapsedTime(msec: number):string {
-  const msecPerSecond = 1000;
-  const msecPerMinute = msecPerSecond * 60;
-  const msecPerHour = msecPerMinute * 60;
-  const msecPerDay = msecPerHour * 24;
-  let days = Math.trunc(msec / msecPerDay);
-  msec -= (days * msecPerDay);
-  let hours = Math.trunc(msec / msecPerHour);
-  msec -= (hours * msecPerHour);
-  let minutes = Math.trunc(msec / msecPerMinute);
-  msec -= (minutes * msecPerMinute);
-  let seconds = Math.trunc(msec / msecPerSecond);
-  msec -= (seconds * msecPerSecond);
-  let result = '';
-  if (days > 0)
-    result = sp(days,' day',' days');
-  if (hours > 0)
-    result = spaces(result, sp(hours,' hr',' hrs'));
-  if (days == 0) {
-    if (minutes > 0)
-      result = spaces(result, minutes + ' min');
-    if (hours == 0) {
-      if (seconds > 0)
-        result = spaces(result, Number( (seconds + (1/msec)).toFixed(3) ) + ' sec');
-      else if (minutes == 0)
-        result = spaces(result, msec + ' msec');
-    }
-  }
-  return result;
-}
-
-
-/**
- * @param date a javascript date
- * @param timeZone the zone the date should be converted to.  Leave undefined for the local time zone.
- * @returns a formatted date string in the system locale with a numeric date, ex. `1/1/2020` and a full time including seconds and milliseconds `10:23:55.123`. It will end with am/pm if the locale requires it.
- */
-export function getTimeZone(date:Date, timeZone?:string):string {
-  let zone = date.toLocaleDateString([], {timeZoneName:'short', timeZone});
-  return zone.split(' ').pop() ?? '';
-}
-
-/**
- * @param date a javascript date
- * @param timeZone the zone the date chould be converted to.  Leave undefined for the local time zone.
- * @returns a formatted date string in the system locale with a numeric date, ex. `1/1/2020` and a full time including seconds and milliseconds `10:23:55.123`. It will end with am/pm if the locale requires it.
- */
-export function getPreciseDate(date:Date, timeZone?:string):string {
-  let preciseDate = `${date.toLocaleDateString([], {year:'numeric', month:'2-digit', day:'2-digit', timeZone})} ${date.toLocaleString([], {hour: '2-digit', minute:'2-digit', second:'2-digit', timeZone}).toLocaleLowerCase().replace(' ',' ')}`;
-  let match = preciseDate.match(/\d[^\d]+$/); // <-- finds the last digit
-  if (match && typeof match.index != 'undefined')
-    return splice(preciseDate, match.index+1, 0, `.${String(date.getMilliseconds()).padEnd(3,'0')}`);
-  return '<unknown>';
-}
-
-export function analyzeDate(date:Date):{
-  local:{preciseDate:string, zone:string},
-  utc:{preciseDate:string, zone:string}
-} {
-  return {
-    local: {
-      zone: getTimeZone(date),
-      preciseDate: getPreciseDate(date),
-    },
-    utc: {
-      zone: getTimeZone(date,'UTC'),
-      preciseDate: getPreciseDate(date,'UTC'),
-    }
-  }
-}
-
-
 
 // html ///////////////////////////////////////////////////////////////////////////////
 /**
@@ -1579,388 +1855,6 @@ export function last<T>(iterator:IterableIterator<T>):{value:T, index:number} | 
   return {value:last!.value, index};
 }
 
-
-// events /////////////////////////////////////////////////////////////////////////////
-
-export type SyncEventListener<D,R> = (data:D, eventParams:EventParams<D,R>) =>  R|undefined|void;
-export type AsyncEventListener<D,R> = (data:D, eventParams:EventParams<D,R>) => Promise<R|undefined|void>;
-
-export type EventListener<D,R> = SyncEventListener<D,R> | AsyncEventListener<D,R>;
-
-export class EventParams<D,R> {
-  private _isCueingStopped = false;
-  private _isEventCanceled = false;
-  constructor(
-    public result:R | undefined,
-    public listener:EventListener<D,R>
-  ) {}
-
-  public get isCueingStopped() {
-    return this._isCueingStopped;
-  }
-
-  public get isEventCanceled() {
-    return this._isEventCanceled;
-  }
-
-  /**
-   * prevents any further listeners from being cued. This is the same as `stopImmediatePropagation()`
-   * method used in JS DOM element events.
-   */
-  public stopCues() {
-    this._isCueingStopped = true;
-  }
-
-  /**
-   * prevents any further listeners from being cued **and signals to the hosting class** that the event
-   * should be canceled if possible.  It will then be up to the hosting class to heed the `isEventCanceled`
-   * flag to cancel whatever process it is in charge of.
-   */
-  public cancelEvent() {
-    this.stopCues();
-    this._isEventCanceled = true;
-  }
-
-}
-
-
-
-/**
- * represents an event attached to any object. [see below for the &lt;generic&gt; type details]
- *
- * Unlike other event systems, this does not require that the class wanting to
- * offer events be a descendant of a specific event class.  Each `Event` can host 0 or more listeners.
- * Example:
- * ```
- * class car {
- *   private position = 0;
- *   public onMove = new Event<{distance:number},number>; // <-- onMove will be called before a move is actually made so the developer has a chance to change the move amount
- *   public move(distance:number) {
- *     distance = this.onMove.cue({distance},distance);
- *     this.position += distance;
- *   }
- * }
- *
- * let car = new car();
- * car.onMove.do( (eventParams) => {
- *   const maxDistance = 100;
- *   if (eventParams.data.distance > maxDistance)
- *     eventParams.result = 0;
- * });
- * ```
- * When the events are cued, each listener is called and provided with an `eventParams` which contains
- * the members `data` and `result`.  The listener will read any info provided in the `data` member
- * and optionally set the `result` member if a return value is needed.  Also note that the `data` member
- * can be changed and thereby affect other listers yet to be called. The default `result` is determined
- * by a parameter provided when calling the `cue()` method.  `eventParams` can also be used to prevent
- * other listeners from being called by using the `stopCueing()` method.  The listener can also request
- * that the event itself be canceled by calling `cancelEvent()`.  It then will be up to the class hosting
- * the event to heed the cancellation or not.
- *
- * @type D is the type of data passed to each listener
- * @type R is the type of the return data coming from listeners
- */
-export class Event<D = undefined,R = undefined> {
-  protected listeners = new Map<EventListener<D,R>,{once: boolean}>();
-  protected _isCueing = false;
-
-  /** when false, calling {@link cue}() will not call any listeners */
-  public active = true;
-
-
-  public get hasListeners():boolean {
-    return this.listeners.size > 0;
-  }
-
-  public get isCueing() {
-    return this._isCueing;
-  }
-
-  /**
-   * adds an event listener to the event.  The listener will be executed when the event's `cue()` or
-   * `cueAsync()` methods are called by the hosting class.
-   *
-   * example:
-   * ```
-   *   myEvent.do((data, eventParams) => {
-   *     return data.num+1;
-   *   })
-   * ```
-   * in most cases, listener functions access members of the `data` object and return a result. If
-   * undefined is returned, the `defaultValue` passed into the calling `cue()` or `cueAsync()`
-   * function will be returned instead.
-   *
-   * if there are other listeners, they will all be executed in the order in which they were added.
-   * Async listeners called using `cueAsync()` will be awaited before calling the next listener.
-   *
-   * `eventParams:`{@link EventParams} includes the following members:
-   *  - `result` <-- contains the default result to be used if this listener returns undefined
-   *  - `listener` <-- a reference to this listener which can be passed to {@link remove}()
-   *  - `stopCues()` <-- call this to stop calling further listeners. This also guarantees that the
-   *                    return value will be the one from this listener.
-   *  - `cancelEvent()` <-- call this to stop calling further listeners (like `stopCues()`). but
-   *                        this also indicates to the hosting class that the entire event should
-   *                        be canceled.  It would be up to the hosting class to react to the flag.
-   */
-   public do(listener: EventListener<D,R>): EventListener<D,R> {
-    this.listeners.set(listener,{once: false});
-    return listener;
-  }
-
-  /**
-   * adds an event listener to the event and makes it the first one to be executed when the `cue()`
-   * or `cueAsync()` methods are called. Normally, multiple listeners are executed in the order they
-   * are added. See {@link do}() for information about the listener parameters.
-   */
-  public doFirst(listener: EventListener<D,R>): EventListener<D,R> {
-    let oldListeners = this.listeners;
-    this.listeners = new Map<EventListener<D,R>,{once: boolean}>([[listener,{once:false}],...oldListeners]);
-    return listener;
-  }
-
-  /**
-   * adds an event listener to be executed the next time the `cue()` or `cueAsync()` methods are
-   * called, but then removes it from the list of listeners. See {@link do}() for information about
-   * the listener parameters.
-   */
-  public doOnce(listener: EventListener<D,R>): EventListener<D,R> {
-    this.listeners.set(listener,{once: true});
-    return listener;
-  }
-
-  /**
-   * makes the event listener the first to be executed the next time the `cue()` or `cueAsync()`
-   * methods are called but then removes it from the list of listeners. See {@link do}() for
-   * information about the listener parameters.
-   */
-  public doOnceFirst(listener: EventListener<D,R>): EventListener<D,R> {
-    let oldListeners = this.listeners;
-    this.listeners = new Map<EventListener<D,R>,{once: boolean}>([[listener,{once:true}],...oldListeners]);
-    return listener;
-  }
-
-  public remove(listener: EventListener<D,R>) {
-    this.listeners.delete(listener);
-  }
-
-  public removeAll() {
-    this.listeners.clear();
-  }
-
-  /**
-   * classes that host the event should execute this method to call the listeners to action. Note
-   * that although {@link do}() will accept asyc functions, they will not be awaited when the host
-   * object calls cue().  Use {@link cueAsync}() if the hosting object needs to make the call with
-   * `await` in order to get a return value from asynchronous listeners.
-   * @param data contains arbitrary data that the host wants to pass to the listener.
-   * `data` can also be a reference to a function that returns the data. Use a function
-   * when there is a performance cost to obtaining the data. That way, the cost will only be
-   * incurred if there are actually listeners listening.
-   * @param defaultResult what the result will be if the listeners don't assign one before returning.
-   * @returns the result of the last listener that returned something other than undefined or else it
-   * returns the defaultResult.
-   */
-  public cue():R | undefined;
-  public cue(data:D | (() => D), defaultResult?:R ):R | undefined;
-  public cue(data:D | (() => D), defaultResult:R ):R;
-  public cue(data?:D | (() => D), defaultResult?:R ):R | undefined {
-    this._isCueing = true;
-    try {
-
-      if (!this.active || this.listeners.size <= 0)
-        return defaultResult;
-      if (data instanceof Function)
-        data = data();
-      let eventParams = new EventParams<D,R>(defaultResult,undefined!);
-      for (let [listener, params] of this.listeners) {
-        if (params.once)
-          this.remove(listener);
-        eventParams.listener = listener;
-        let result = listener(data as any, eventParams);
-        if (eventParams.isEventCanceled)
-          return defaultResult;
-        if (! (result instanceof Promise) && (typeof result != 'undefined'))
-          eventParams.result = result;
-        if (eventParams.isCueingStopped)
-          break;
-      }
-      return eventParams.result;
-
-    } finally {
-      this._isCueing = false;
-    }
-  }
-
-
-  /**
-   * classes that host the event should execute this method to call the listeners to action when
-   * it needs to await an async result.
-   * @param data contains arbitrary data that the host wants to pass to the listener.
-   * `data` can also be a reference to a function that returns the data. Use a function
-   * when there is a performance cost to obtaining the data. That way, the cost will only be
-   * incurred if there are actually listeners listening.
-   * @param defaultResult what the result will be if the listeners don't assign one before returning.
-   * @returns the result of the last listener that returned something other than undefined or else it
-   * returns the defaultResult.
-   */
-  public async cueAsync():Promise<R | undefined | void>;
-  public async cueAsync(data:D | (() => D), defaultResult?:R ):Promise<R | undefined | void>;
-  public async cueAsync(data:D | (() => D), defaultResult:R ):Promise<R>;
-  public async cueAsync(data?:D | (() => D), defaultResult?:R ):Promise<R | undefined | void > {
-    this._isCueing = true;
-    try {
-      if (!this.active || this.listeners.size <= 0)
-        return defaultResult;
-      if (data instanceof Function)
-        data = data();
-      let eventParams = new EventParams<D,R>(defaultResult,undefined!);
-      for (let [listener, params] of this.listeners) {
-        if (params.once)
-          this.remove(listener);
-        eventParams.listener = listener;
-        let result = await listener(data as any, eventParams);
-        if (eventParams.isEventCanceled)
-          return defaultResult;
-        if (typeof result != 'undefined')
-          eventParams.result = result;
-        if (eventParams.isCueingStopped)
-          break;
-      }
-      return eventParams.result;
-    } finally {
-      this._isCueing = false;
-    }
-  }
-
-}
-
-
-/**
- * offeres an `onChanged` event that gets cued when a change to the decentant's instance occurs. Use
- * the `create()` static function to instantiate this class.
- *
- * **important**: make sure the property names you are interested in watching do not get minified
- * when you put your code into production.
- */
-export class ChangeDetector {
-  /**
-   * when this is false, on changed and on set events will not be cued. Use may also use the {@link oneEvent}()
-   * and {@link noEvents}() functions to control the change events.
-   */
-  public shouldCueEvents:boolean = true;
-
-  /**
-   *  this must be called to instantiate the class instead of `new XXXX()`.
-   *
-   *  #### technical details
-   *
-   *  this functon uses some typescript magic in order to make it usable in a simple way. The
-   *  `this` parameter in the parameter list lets you declare to typescript what the type of the
-   *  `this` value will be.  That way you can call `new this()` and create a new instance of the
-   *   this object.  Note that the parameter `this` will not actually be part of the calling
-   *  signature of the function which is confusing to say the least. If you are using Intellisense
-   *  for this function's expected parameters, the calling signature will be presented to you as:
-   *  `ChangeDetector.create()` while the real declaration is
-   *  `ChangeDetector.create<T extends typeof ChangeDetector>(this: T)`.  More information about this somewhat
-   *  hidden typescript feature is here:
-   *  https://www.typescriptlang.org/docs/handbook/2/functions.html#declaring-this-in-a-function
-   *
-   *  Also, this function takes a generic variable `T` which you aren't expected to specify when
-   *  using this function to create an instance of ChangeDetector's descendant. Why don't you need to
-   *  specify it? Answer: Typescript has an automatic inference capability that kicks in when you
-   *  don't specify a generic type in the call. It normally looks at the types of the passed in
-   *  parameters and uses those.  However, in this case, we aren't passing in any real parameters,
-   *  but it is able to magically infer the type from `this: T`.  I'm calling this magic because
-   *  it seems like circular logic happening here, so Typescript must have special internal code
-   *  that sorts this out.
-   *  https://www.typescriptlang.org/docs/handbook/2/generics.html#using-class-types-in-generics
-   *
-   *  the function returns an InstanceType<T>.  Since T is the class of a ChangeDetector descendant,
-   *  this allows the function to return an instance of that class.
-   *  https://www.typescriptlang.org/docs/handbook/utility-types.html#instancetypetype
-   *
-   *  This crazy typescript magic is presented, but not fully explained in this very long Github
-   *  discussion:
-   *  https://github.com/microsoft/TypeScript/issues/5863#issuecomment-528305043
-   *
-   *  the final piece to the puzzle is that this call `ChangeDetectorDescendant.create()` causes
-   *  typescript  to automatically infer the T in the `this: T` parameter based on the class specified on
-   *  the call.  Then InstanceType<T> tells typescript that the function will return an instance
-   *  of the inferred `this: T` type, which again is `this: ChangeDetectorDescendant`.
-   */
-  static create<T extends typeof ChangeDetector>(this: T): InstanceType<T> {
-    return (new Proxy(new this(),ChangeDetector.proxyHandler)) as InstanceType<T>;
-  }
-  static proxyHandler = {
-    set: (target:ChangeDetector, propertyKey:string, value:any) => {
-      let dataHasChanged = ((target as any)[value] != value);
-      Reflect.set(target, propertyKey, value);
-      // do not call events when native properties of the parent class get set.
-      if (['shouldCueEvents'].includes(propertyKey))
-        return true;
-      if (!target.shouldCueEvents)
-        return true;
-      target.onSet.cue({propertyKey});
-      if (dataHasChanged)
-        target.onChanged.cue({propertyKey});
-      return true;
-    }
-  }
-
-  /**
-   * **important**: make sure the property names you are interested in watching do not get minified.
-   *
-   * this event gets cued whenever a property actually changes. Use {@link onSet} if you want to
-   * know if a property was set at all -- even if it was set to the same value.
-   * `data.propertyKey:string` contains the name of the changing property. if `propertyKey` is an
-   * empty string, it means that multiple properties changed.
-   */
-  public onChanged = new Event<{propertyKey:string}>();
-
-  /**
-   * **important**: make sure the property names you are interested in watching do not get minified.
-   *
-   * this event gets cued whenever a property is set, even if it's being set to the same value. Use
-   * {@link onChanged} if you want to know if a property was actually changed to s different value.
-   * `data.propertyKey:string` contains the name of the changing property.
-   */
-  public onSet = new Event<{propertyKey:string}>();
-
-  /**
-   * any changes to this class' members will not cue an onChanged event when made inside of the func,
-   * but instead a change event will be called at the end.
-   */
-  public oneEvent(func:()=>void) {
-    this.shouldCueEvents = false;
-    try {
-      func();
-    } finally {
-      this.shouldCueEvents = true;
-      this.onChanged.cue({propertyKey:''});
-    }
-  }
-
-  public noEvents(func:()=>void) {
-    this.shouldCueEvents = false;
-    try {
-      func();
-    } finally {
-      this.shouldCueEvents = true;
-    }
-  }
-
-}
-
-// DOM /////////////////////////////////////////////////////////////////////////
-
-export function getClassEnding(e:Element,startsWith:string):string|undefined {
-  for (let i = 0; i < e.classList.length; i++) {
-    if (e.classList[i].startsWith(startsWith))
-      return e.classList[i].substring(startsWith.length);
-  }
-  return undefined;
-}
-
 /**
   keeps the `value` between the `min` and `max` values.
 */
@@ -1978,8 +1872,14 @@ export function rawTextDateToLocalMidnight(rawTextDate: string):Date {
   return new Date(rawTextDate+'T00:00:00.000');
 }
 
-export function ifNaN(testNumber: number, defaultNumber: number): number {
-  return isNaN(testNumber) ? defaultNumber : testNumber;
+export function ifBadNumber(testNumber: number, defaultNumber: number): number {
+  return (isNormalNumber(testNumber) ? testNumber : defaultNumber);
+}
+
+export function normalNumberOrUndefined(testNumber: number): number|undefined {
+  if (isNormalNumber(testNumber))
+    return testNumber;
+  return undefined;
 }
 
 export function noHigherThan(testNumber: number, maxNumber: number): number {
@@ -2023,30 +1923,101 @@ export function debug(value:any) {
   console.log(JSON.parse(JSON.stringify(value)));
 }
 
+/**
+ * logs the value to the console in a JSON format. (In case you are unable to expand object values in your terminal)
+ */
+export function debugText(value:any) {
+  console.log(JSON.stringify(value,undefined,2));
+}
+
 export function deepClone(object: any):any {
   return JSON.parse(JSON.stringify(object));
 }
 
-/** todo: implement this! **/
-// export function dateToRelativeDay(date: Date, fullDateOptions:Intl.DateTimeFormatOptions):string {
-//   return date.toLocaleDateString(undefined, fullDateOptions);
-// }
+export type AnyObject = {[key: string]:any};
 
-// export function dateToRelativeMinute(date: Date, fullDateOptions:Intl.DateTimeFormatOptions):string {
-//   console.log(date);
-//   return date.toLocaleDateString(undefined, fullDateOptions);
-// }
-
-export function getHumanByteSize(sizeInBytes: number) {
-  if (sizeInBytes < 1000)
-    return sizeInBytes+' bytes';
-  else if (sizeInBytes <= 1000000)
-    return (sizeInBytes/1000).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' kb';
-  else if (sizeInBytes <= 1000000000)
-    return (sizeInBytes/1000000).toLocaleString(undefined, { maximumFractionDigits: 2 }) + ' Mb';
-  else
-    return (sizeInBytes/1000000000).toLocaleString(undefined, { maximumFractionDigits: 2 })+' Gb';
+/**
+ * copies all properties from `srcObject` to `destObject`, skipping any properties named in `options.except[]`.
+ *
+ * if the property is named in `options.clone[]` and it has a getClone() method, it will be called, and the result
+ * will be placed into the destination instead of simply copying the reference.
+ */
+export function copyProperties(srcObject:AnyObject, destObject:AnyObject, options?:{except?:string[], clone?:string[]}) {
+  for (let property in srcObject) {
+    let propType = typeof srcObject[property];
+    if (propType == 'function')
+      continue;
+    if (options?.except?.includes(property))
+      continue;
+    if (options?.clone?.includes(property)) {
+      if (
+        typeof srcObject[property] == 'object' &&
+        srcObject[property] != null
+      ) {
+        if ('getClone' in srcObject[property])
+          destObject[property] = srcObject[property].getClone();
+        else {
+          let newProp = {};
+          copyProperties(srcObject[property], newProp);
+          destObject[property] = newProp;
+        }
+        continue;
+      }
+      throw new Error(`property "${property}" does not have a getClone() method`);
+    }
+    destObject[property] = srcObject[property];
+  }
 }
+
+
+/**
+ * default options:
+ *   - `displayZeroUnit` = `false`
+ *   - `billionIsG` = `true`
+ */
+export function getDisplayNumber(value: number, suffix:string='', options?:{displayZeroUnit?:boolean, billionIsG?:boolean, locale?:string}) {
+  let {displayZeroUnit = false, billionIsG = true, locale} = options ?? {};
+
+  if (value < 1000) {
+    let n = value;
+    return n + (!displayZeroUnit && n == 0 ? '' : prefix(' ',suffix));
+
+  } else if (value <= 5000) {
+    // in the low thousands, add a 'k' with one decimal place
+    let n = value/1000;
+    return n.toLocaleString(locale, { maximumFractionDigits: 1 }) + ' k'+suffix;
+
+  } else if (value <= 1_000_000) {
+    // under a million, same as above, but drop fractions
+    let n = value/1000;
+    return n.toLocaleString(locale, { maximumFractionDigits: 0 }) + ' k'+suffix;
+
+  } else if (value <= 5_000_000) {
+    // in the low millions, add an 'M' with one decimal place
+    let n = value/1_000_000
+    return n.toLocaleString(locale, { maximumFractionDigits: 1 }) + ' M'+suffix;
+
+  } else if (value <= 1_000_000_000) {
+    // under a billion, same as above, but drop fractions
+    let n = value/1_000_000;
+    return n.toLocaleString(locale, { maximumFractionDigits: 0 }) + ' M'+suffix;
+
+  } else if (value <= 1_000_000_000_000) {
+    // under a trillion, add a 'B' or 'G' with two decimal places
+    let n = value/1_000_000_000;
+    return n.toLocaleString(locale, { maximumFractionDigits: 2 }) + ' '+(billionIsG ? 'G' : 'B')+suffix;
+  }
+
+  // else, add a 'T' with two decimal places
+  let n = value/1_000_000_000_000;
+  return n.toLocaleString(locale, { maximumFractionDigits: 2 }) + ' T'+suffix;
+}
+
+export function getDisplayByteSize(value: number, options?:{displayZeroUnit?:boolean, locale?:string}) {
+  let {displayZeroUnit = false, locale} = options ?? {};
+  return getDisplayNumber(value, 'b', {billionIsG: true, displayZeroUnit, locale});
+}
+
 
 /**
  * case insensitive locale sort
@@ -2057,4 +2028,243 @@ export function sortStrings<T>(selectItems: T[], getValues:  (a: T, b: T) => {a:
     let {a, b} = getValues(aSource,bSource);
     return collator.compare(a, b);
   });
+}
+
+export function parseIntDef(s:string, def:number|undefined = undefined): number|undefined {
+  let result = parseInt(s);
+  if (isNaN(result) || !Number.isSafeInteger(result))
+    return def;
+  return result;
+}
+
+// network //////////////////////////////////////////////////
+
+export function ipV4ToUInt32(ipV4:string) {
+  let bytes = ipV4.split('.').map((s) => new UInt32(stringToInt(s) ?? 0) );
+  return new UInt32(
+    bytes[3].value +
+    bytes[2].shiftLeft(8).value +
+    bytes[1].shiftLeft(16).value +
+    bytes[0].shiftLeft(24).value
+  );
+};
+
+export function ipV6ToUInt128(ipV6:string):UInt128 {
+  let sWords = ipV6.split(':');
+  let highWords:UInt128[] = [];
+  let lowWords:UInt128[] = [];
+  let currentWords:UInt128[] = highWords;
+  let words:UInt128[] = [];
+  for (let i = 0; i < sWords.length; i++) {
+    if (sWords[i] == '')
+      currentWords = lowWords;
+    else
+      currentWords.push( new UInt128( ifBadNumber(Number('0x'+sWords[i]), 0) ) );
+  }
+  for (let highWord of highWords)
+    words.push(highWord);
+  for (let i=0; i < 8 - (lowWords.length + highWords.length); i++)
+    words.push( new UInt128(0));
+  for (let lowWord of lowWords)
+    words.push(lowWord);
+
+  return new UInt128(
+    words[7].value +
+    words[6].shiftLeft(16).value +
+    words[5].shiftLeft(32).value +
+    words[4].shiftLeft(48).value +
+    words[3].shiftLeft(64).value +
+    words[2].shiftLeft(80).value +
+    words[1].shiftLeft(96).value +
+    words[0].shiftLeft(112).value
+  );
+};
+
+export function parseIpV4Cidr(ipV4Cidr:string):{uInt32:UInt32, cidrBits:number} {
+  let split = ipV4Cidr.split('/');
+  return {
+    uInt32: ipV4ToUInt32(split[0]),
+    cidrBits: parseInt(split[1])
+  }
+}
+
+export function parseIpV6Cidr(ipV6Cidr:string):{uInt128:UInt128, cidrBits:number} {
+  let split = ipV6Cidr.split('/');
+  return {
+    uInt128: ipV6ToUInt128(split[0]),
+    cidrBits: parseInt(split[1])
+  }
+}
+
+export function isIpV4(ip:string) {
+  return ip.includes('.');
+}
+
+export function normalizeIpV4(ip:string) {
+  if (ip.startsWith('::ffff:'))
+    return ip.substring(7);
+  return ip;
+}
+
+/**
+ * returns 0 if the `ipV4` is withinn the `Cidr` range, < if the `ipV4` exists in a range less than the `Cidr`, or > 0 if the `ipV4` exists in a range greater than the `Cidr`.
+ */
+export function ipV4CidrCompare(ipV4:string, ipV4Cidr:string) {
+  let ipV4UInt32 = ipV4ToUInt32(ipV4);
+  let parsedCidr = parseIpV4Cidr(ipV4Cidr);
+  let bitMask = (new UInt32(0xFFFFFFFF)).shiftLeft(32 - parsedCidr.cidrBits);
+  let ipV4UInt32Masked = new UInt32(ipV4UInt32.value & bitMask.value);
+  // console.log('       ipV4Uint32:'+ipV4UInt32.asBinaryString);
+  // console.log('          bitMask:'+bitMask.asBinaryString);
+  // console.log(' ipV4Uint32Masked:'+ipV4UInt32Masked.asBinaryString);
+  // console.log('parsedCidr.uInt32:'+parsedCidr.uInt32.asBinaryString);
+  return ipV4UInt32Masked.value - parsedCidr.uInt32.value;
+}
+
+
+/**
+ * returns 0 if the `ipV6` is withinn the `Cidr` range, < if the `ipV6` exists in a range less than the `Cidr`, or > 0 if the `ipV6` exists in a range greater than the `Cidr`.
+ */
+export function ipV6CidrCompare(ipV6:string, ipV6Cidr:string):number {
+  let ipV6UInt128 = ipV6ToUInt128(ipV6);
+  let parsedCidr = parseIpV6Cidr(ipV6Cidr);
+  let bitMask = (new UInt128(0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFFn)).shiftLeft(128 - parsedCidr.cidrBits);
+  let ipV6UInt128Masked = new UInt128(ipV6UInt128.value & bitMask.value);
+  let result = (ipV6UInt128Masked.value - parsedCidr.uInt128.value);
+  // console.log(`${ipV6} (${result})--> ${ipV6Cidr}`);
+  // console.log('              ipV6: '+ipV6);
+  // console.log('       ipV6UInt128:'+ipV6UInt128.asBinaryString);
+  // console.log('           bitMask:'+bitMask.asBinaryString);
+  // console.log(' ipV6UInt128Masked:'+ipV6UInt128Masked.asBinaryString);
+  // console.log('parsedCidr.uInt128:'+parsedCidr.uInt128.asBinaryString);
+  // console.log('');
+  if (result == 0n)
+    return 0;
+  if (result > 0n)
+    return 1;
+  return -1;
+}
+
+export interface ArrayLikeProxyParams<TargetType extends object, ItemType> {
+  target: TargetType,
+  getLength?: () => number,
+  getItem: (index:number) => ItemType | undefined
+}
+
+export class ArrayLikeProxy<TargetType extends object,ItemType> implements ArrayLike<ItemType> {
+  readonly [n: number]: ItemType;
+
+  constructor(
+    private params: ArrayLikeProxyParams<TargetType, ItemType>
+  ) {
+    return new Proxy(
+      params.target,
+      {
+        get: (target, prop, receiver) => {
+          let index = Number(prop);
+          if (!isNaN(index) && !(prop in target))
+            return params.getItem(index);
+          return Reflect.get(target, prop, receiver);
+        }
+      }
+    ) as ArrayLikeProxy<TargetType,ItemType>;
+  }
+
+  public get length(): number {
+    if (this.params.getLength)
+      return this.params.getLength();
+    return (this.params.target as any).length;
+  }
+
+}
+
+/**
+ * sets the property to a new value if the current value is different. If it actually sets the property,
+ * the onChanged event is called with the old value.
+ */
+export function setProp(obj: object, propName:string, value:any, onChanged?:(oldValue:any) => void) {
+  if ((obj as any)[propName] === value)
+    return;
+  let oldValue = (obj as any)[propName];
+  (obj as any)[propName] = value;
+  if (onChanged)
+    onChanged(oldValue);
+}
+
+
+export function base64ToBase64Url(s:string):string {
+  return trimEndChars(s.replace(/\+/g, '-').replace(/\//g, '_'), ['=']);
+}
+
+export function base64UrlToBase64(s:string):string {
+  return trimEndChars(s.replace(/-/g, '+').replace(/_/g, '/'), ['=']);
+}
+
+export function stringTobase64Url(s:string):string {
+  return base64ToBase64Url( btoa(unescape(encodeURIComponent(s))) );
+}
+
+export function base64UrlToString(s:string):string {
+  return decodeURIComponent(escape( base64UrlToBase64(atob(s)) ));
+}
+
+
+export function objectsHaveSameKeys(...objects:any[]) {
+  let union = new Set<any>();
+  union = objects.reduce((keys, object) => keys.add(Object.keys(object)), union);
+  if (union.size == 0)
+    return true;
+  if (!objects.every((object) => union.size === Object.keys(object).length))
+    return false;
+  for (let key of union.keys()) {
+    let res = objects.map((o) => (typeof o[key] === 'object' ? o[key] : {}))
+    if (!objectsHaveSameKeys(...res)) return false
+  }
+  return true
+}
+
+
+
+
+// date - simple date functions //////////////////////////////////////////////////////////////////////
+
+
+/**
+ * number of seconds since since 1970-01-01 0:00.000 UTC
+ */
+export function unixTimeSeconds(date:Date = new Date()) {
+  return Math.floor(date.getTime() / 1000);
+}
+
+/**
+ * number of milliseconds since 1970-01-01 0:00.000 UTC
+ */
+export function unixTimeMsec(date:Date = new Date()) {
+  return Math.floor(date.getTime());
+}
+
+export function unixTimeSecondsToDate(seconds:number):Date {
+  return new Date(seconds * 1000);
+}
+
+export function isDateInRange(date: Date, start: Date, end: Date): boolean {
+  let dateUnixMSec = unixTimeMsec(date);
+  return dateUnixMSec >= unixTimeMsec(start) && dateUnixMSec <= unixTimeMsec(end);
+}
+
+export function secondsBetween(start: Date, end: Date): number {
+  return unixTimeSeconds(start) - unixTimeSeconds(end);
+}
+
+export function secondsSince(date: Date): number {
+  return secondsBetween(new Date(), date);
+}
+
+/**
+ * makes sure start comes before end
+ */
+export function startBeforeEnd(start: number, end: number): { start: number; end: number} {
+  if (end < start)
+    [start, end] = [end, start];
+  return {start, end};
 }

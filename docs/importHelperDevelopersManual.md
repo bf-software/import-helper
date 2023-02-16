@@ -34,8 +34,9 @@ There are 3 kinds of module specifiers:
      4.  in a the `node_modules` folder residing in the parent folder of the importing module -- and on and on until the root folder is reached
    - ex. `import * as ss from 'src/common/systemSupport';`  - can be set to mean `<your project folder>/src/common/systemSupport` using the `baseUrl`.
    - ex.  `import * as e from 'electron';` - this actually means `<your project folder>/node_modules/electron`
-   - remember: absolute paths are **not** "non-relative" in typescript, they are their own thing. Perhaps a better term for this type of path: `import * as ss from 'src/common/systemSupport';` would be "a findable path".
+   - remember: absolute paths are **not** "non-relative" in typescript, they are their own thing. Perhaps a better term for this type of path: `import * as ss from 'src/common/systemSupport';` would be a "searchable path".
 
+   Note: when the code refers to "non-relative" paths, it used the term "searchable path" - with variables and other identifiers named like so: "searchablePath".
 
 #### Basic Variable Rules
 
@@ -186,7 +187,10 @@ Modules offered by the node_modules folder are pulled in by leveraging vscode's 
 
 ## bugs
 
+none
+
 ## (easy items)
+
 
 ### paths
 
@@ -205,11 +209,11 @@ change the webview to use a treeview and (possibly the references treeview) for 
 
 ### open module - source code options
 
-when the open module command is used to open a module, if there are multiple source code options (like a .d.ts, .mjs, or .js files) that are associated with the module, IH will provide a list to choose from.  This list comes from complicated reverse module resolution code that looks at all the crazy settings in `package.json`.  Currently the code that analyzes the `main`, `types`, `typesVersons` and `exports` entries is a little weak (as I don't fully understand all of the mapping possibilites made available by those features).
+when the open module command is used to open a module, if there are multiple source code options (like a .d.ts, .mjs, or .js files) that are associated with the module, IH will provide a list to choose from.  This list comes from complicated reverse module resolution code that looks at all the crazy settings in `package.json`.  Currently the code that analyzes the `main`, `types`, `typesVersons` and `exports` entries.  However, this is a little weak (as I don't fully understand all of the mapping possibilites made available by those features).
 
 ### locate the exported symbol when opening
 
-when IH is used to open a symbol item, it currently opens the module it is exported from and leaves the cursor at the default position.  ID should parse the module and place the cursor at the export declaration for the symbol.
+when IH is used to open a symbol item, it currently opens the module it is exported from and leaves the cursor at the default position.  IH should instead parse the module and place the cursor at the export declaration for the symbol.
 
 ### determine default exports for modules
 

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { ImportHelperApi, MessageStyle } from './importHelperApi';
 import * as ss from './common/systemSupport';
 import { cAppName, Identifier } from './appSupport';
-import { PlainQuickPick, PlainQuickPickButtons } from './plainQuickPick';
+import { PlainQuickPick, PlainQuickPickButtons, PlainQuickPickItem } from './plainQuickPick';
 import { docs } from './document';
 import { globals } from './common/vscodeSupport';
 import * as vs from './common/vscodeSupport';
@@ -26,9 +26,9 @@ export class ImportHelperUi {
   private openModuleKey: string = '';
   private showReferencesKey: string = '';
   private lastModuleSearchValue: string = '';
-  private lastModuleSearchItemIndex: number = 0;
+  private lastModuleSearchQpi: PlainQuickPickItem | undefined;
   private isFreshModuleSearch: boolean = false;
-  private editorSearchSymbol: Identifier | undefined;
+  private editorSearchIdentifier: Identifier | undefined;
 
   constructor() {
 
@@ -80,13 +80,23 @@ export class ImportHelperUi {
 
     this.api.mode = mode;
     this.api.importingModuleFilePath = ss.extractPath(docs.active.file ?? '');
-    await this.api.initStartQuickPick({ onLoadingMilestone:(finalMilestone:boolean=false) => {
-      if (! this.moduleQuickPick)
+    try {
+      await this.api.initStartQuickPick({ onLoadingMilestone:(finalMilestone:boolean=false) => {
+        if (! this.moduleQuickPick)
+          return;
+        if (this.moduleQuickPick!.value.length <= 1 && finalMilestone == false)  // <-- if *, or just 1 character is used, do not keep refreshing
+          return;
+        this.changedModuleValue(false,true);
+      } });
+    } catch(e: any) {
+      if (e instanceof Error && ss.containsText(e.message, 'not found in workspace') ) {
+        vscode.window.showInformationMessage(`Import Helper can only work with files in an open project.${mode == IHMode.openModule ? ` Opening vscode's quick open instead.` : ``}`);
+        if (mode == IHMode.openModule)
+          vscode.commands.executeCommand('workbench.action.quickOpen');
         return;
-      if (this.moduleQuickPick!.value.length <= 1 && finalMilestone == false)  // <-- if *, or just 1 character is used, do not keep refreshing
-        return;
-      this.changedModuleValue(false,true);
-    } });
+      }
+      throw(e);
+    }
 
     // at this point, the docs.actve.project is available to use because of the prior call to initRun()
 
@@ -110,7 +120,7 @@ export class ImportHelperUi {
     if (! selectedItem)
       return;
     this.lastModuleSearchValue = this.moduleQuickPick!.value;
-    this.lastModuleSearchItemIndex = this.moduleQuickPick!.items.indexOf(selectedItem);
+    this.lastModuleSearchQpi = selectedItem;
     this.api.step1QPItem = selectedItem;
 
 
@@ -198,17 +208,25 @@ export class ImportHelperUi {
 
       this.isFreshModuleSearch = true;
       if (mode == IHMode.addImport) {
-        this.editorSearchSymbol = this.api.getEditorSearchIdentifier();
-        let searchText = this.lastModuleSearchValue;
-        if (this.editorSearchSymbol) {
-          searchText = this.editorSearchSymbol.text;
-          if (this.editorSearchSymbol.isDefinitelyASymbol)
-            searchText = '{'+searchText
-          docs.active!.rememberPos('editorSearchSymbol',this.editorSearchSymbol.startPos);
+        this.editorSearchIdentifier = undefined;
+        let searchText = this.api.getSelectedSearchText();
+        if (searchText == '') {
+          this.editorSearchIdentifier = this.api.getEditorSearchIdentifier();
+          searchText = this.lastModuleSearchValue;
+          if (this.editorSearchIdentifier) {
+            searchText = this.editorSearchIdentifier.text;
+            if (this.editorSearchIdentifier.isDefinitelyASymbol)
+              searchText = '{'+searchText
+            docs.active!.rememberPos('editorSearchIdentifier',this.editorSearchIdentifier.startPos);
+          }
         }
         this.moduleQuickPick.value = searchText;
-      } else
-        this.moduleQuickPick.value = this.lastModuleSearchValue;
+      } else {
+        let searchText = this.api.getSelectedSearchText();
+        if (searchText == '')
+          searchText = this.lastModuleSearchValue;
+        this.moduleQuickPick.value = searchText;
+      }
 
       this.moduleQuickPick.onDidChangeValue(value => {
         this.changedModuleValue();
@@ -315,32 +333,55 @@ export class ImportHelperUi {
 
 	public showReferenecesKeyPressed() {
     if (this.moduleQuickPick) {
-      if (this.moduleQuickPick.activeItems[0])
+      if (this.moduleQuickPick.activeItems[0] && this.moduleQuickPick.activeItems[0] instanceof qpi.ProjectModuleQuickPickItem)
         this.api.showReferences(this.moduleQuickPick.activeItems[0]);
     } else if (this.symbolQuickPick) {
-      if (this.symbolQuickPick.activeItems[0])
+      if (this.symbolQuickPick.activeItems[0] && this.symbolQuickPick.activeItems[0] instanceof qpi.ProjectModuleQuickPickItem)
         this.api.showReferences(this.symbolQuickPick.activeItems[0]);
     } else {
       this.startQuickPick(IHMode.showReferences);
     }
 	}
 
+  /**
+   * called when IH's Module Search is opened, and every time the search string is changed in the
+   * Module Search's QuickPick.
+   *
+   * This function's job is to calculate/recalculcate the list of QuickPickItems presented to the
+   * user.  If it's a brand new search, it tries to position the initial item to the last one that
+   * was selected during a prior search session. However, if it is not a brand new search and rather
+   * was called in response to the user changing the search string, this will try to keep the
+   * currently selected item selected after the new list of items is created. (ie. if the currently
+   * selected item is still there.)
+   */
   public changedModuleValue(selectTopItem:boolean = true, keepScrollPosition:boolean = false) {
     if (! this.moduleQuickPick)
       return;
     this.moduleQuickPick.keepScrollPosition = keepScrollPosition;
-    let lastItemIndex = this.moduleQuickPick!.items.indexOf(this.moduleQuickPick!.activeItems[0]);
+    let lastHighlightedQpi = this.moduleQuickPick!.activeItems[0]; //<-- save this so we can re-highlight after search
+
+    // do the actual search
     this.api.searchForModules(this.moduleQuickPick!.value);
     this.moduleQuickPick!.items = this.api.moduleSearchQuickPickItems;
 
-    // position the active item at the one that was selected during a prior search session
+
+    // begin code to highlight a particular item if possible
+    let highlightThisQpi:qpi.ProjectModuleQuickPickItem | qpi.SeparatorItem | undefined;
+
     if (this.isFreshModuleSearch && !this.api.moduleSearchQuickPickItems.isLoading) {
-      if (this.lastModuleSearchItemIndex < this.moduleQuickPick!.items.length)
-        this.moduleQuickPick!.activeItems = [this.moduleQuickPick!.items[this.lastModuleSearchItemIndex]];
+      // position the active item at the one that was selected during a prior search session, if it's there
+      if (this.lastModuleSearchQpi)
+        highlightThisQpi = this.moduleQuickPick!.itemByQpi(this.lastModuleSearchQpi);
       this.isFreshModuleSearch = false;
     } else if (!selectTopItem) {
-      this.moduleQuickPick!.activeItems = [this.moduleQuickPick!.items[lastItemIndex]];
+      // position the active item at the one that was last highlighted during this search session, if it's there
+      highlightThisQpi = this.moduleQuickPick!.itemByQpi(lastHighlightedQpi);
     }
+
+    // position the current highlighted item
+    if (highlightThisQpi)
+      this.moduleQuickPick!.activeItems = [highlightThisQpi];
+
   }
 
 
@@ -395,7 +436,7 @@ export class ImportHelperUi {
   }
 
   public async addImportStatement(lastStep:number) {
-    this.api.addImportStatement(lastStep, this.editorSearchSymbol);
+    this.api.addImportStatement(lastStep, this.editorSearchIdentifier);
     if (this.api.addStatementWarning)
       vscode.window.showWarningMessage(this.api.addStatementWarning);
   }

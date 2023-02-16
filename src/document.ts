@@ -62,17 +62,22 @@ export class Document {
     this.vscodeTextEditor!.selection = new vscode.Selection(this.vscodeTextEditor!.selection.end,this.vscodeTextEditor!.selection.end);
   }
 
+  public getSelectedText() {
+    return this.vscodeTextEditor!.document.getText(this.vscodeTextEditor!.selection);
+  }
+
   /**
    * parses the current document if it is a code module
    */
 	public async parseModule() {
     this.module = new Module(this.project!);
     this.module.file = this.file;
+    this.module.currentCursorPos = this.cursorPos;
     if (this.isCode) {
       this.module.sourceCode = this.sourceCode;
       if (this.module.isSvelte) {
-        let insertSpaces = vscode.workspace.getConfiguration('editor',this.vscodeDocument?.uri).get<boolean>('insertSpaces') ?? false;
-        let tabSize = vscode.workspace.getConfiguration('editor',this.vscodeDocument?.uri).get<number>('tabSize') ?? 2;
+        let insertSpaces = as.getSetting('editor','insertSpaces',false,this.vscodeDocument?.uri);
+        let tabSize = as.getSetting('editor','tabSize',2,this.vscodeDocument?.uri);
         this.module.defaultImportIndentCharacters = (insertSpaces ? ' '.repeat(tabSize) : '\t');
       }
 		  await this.module.scan();
@@ -83,6 +88,7 @@ export class Document {
   public getCursorLine() {
     return this.vscodeTextEditor!.selection.end.line;
   }
+
 
   public getCh(pos:number):string {
     let fromPosition = this.posToPosition(pos);
@@ -167,6 +173,13 @@ export class Document {
     }
   }
 
+  public async pasteText(text: string) {
+    let {startPos,endPos} = this.getSelectionRangePos();
+    await this.insertText(startPos, text, endPos, true );
+    this.clearSelection(); // <-- insert text causes a selection to be created.
+  }
+
+
   public rememberPos(name:string, pos?:number) {
     if (typeof pos == 'undefined')
       pos = this.cursorPos;
@@ -185,8 +198,23 @@ export class Document {
     return this.bookmarks.get(name);
   }
 
+  /**
+   * return the numberic positions of the selected range.  If no range is selected, this returns the
+   * cursor position in `startPos`, and `endPos` is undefined.
+   */
+  public getSelectionRangePos(): {startPos:number, endPos:number|undefined} {
+    let startPos = this.positionToPos(this.vscodeTextEditor!.selection.start);
+    let endPos:number|undefined = this.positionToPos(this.vscodeTextEditor!.selection.end);
+    if (endPos == startPos)
+      endPos = undefined;
+    return {
+      startPos,
+      endPos
+    }
+  }
+
   public goTo(posNumOrName:number|string):void {
-    let pos = this.module!.importsStartPos;
+    let pos = this.module!.selectedImportSection.importsStartPos;
     if (typeof posNumOrName == 'number')
       pos = posNumOrName;
     else {
@@ -215,7 +243,7 @@ export class Document {
 		let settingsArea = 'javascript';
 		if (this.isTypescript)
 		  settingsArea = 'typescript';
-    return vscode.workspace.getConfiguration(settingsArea+'.'+subsection,this.vscodeDocument?.uri).get(setting);
+    return as.getSetting(settingsArea+'.'+subsection,setting,undefined,this.vscodeDocument?.uri);
   }
 
   private getBooleanSetting(checkThisFirst:boolean|undefined, subsection:string, setting:string, mustBeValue:unknown):boolean {

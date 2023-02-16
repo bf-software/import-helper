@@ -45,11 +45,14 @@ export class Scanable {
 
 export class Token {
 	private scanner:ts.Scanner = ts.createScanner(ts.ScriptTarget.Latest, true);
-	public kind:TK = TK.EmptyStatement;
-	public lastStartPos:number = 0;
+	private lastStartPos:number = 0;
+
+  public kind:TK = TK.EmptyStatement;
 	public logTokens = false;
   private getTokenEvent: (() => void) | null = null;
+  /** the 0-based line number the parse is known to be starting on */
 	public startLine:number = 0;
+  /** the 0-based column number the parse is known to be starting on */
 	public startColumn:number = 0;
 
   /**

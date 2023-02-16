@@ -9,12 +9,13 @@ Lets you blast through the tedious chore of manually adding import statements to
 <br>
 
 ## Main Commands (Quick Overview)
-| *command*         | *keyboard shortcut*             | *description*                             |
-|-------------------|---------------------------------|-------------------------------------------|
-| **Add Import**    | `Alt+F11 (⌥F11 on Mac)`        | quickly pick a module or symbol to import |
-| **Open Module**   | `Alt+O (⌥O on Mac)`            | open a module by name, alias or symbol    |
-| **Go To Imports** | `Ctrl+Shift+Up (⇧⌘⭡ on Mac)`   | move the cursor to the import section     |
-| **Go Back Down**  | `Ctrl+Shift+Down (⇧⌘⭣ on Mac)` | move the cursor back down to the code     |
+| *command*                 | *keyboard shortcut*             | *description*                             |
+|---------------------------|---------------------------------|-------------------------------------------|
+| **Add Import**            | `Alt+F11 (⌥F11 on Mac)`        | quickly pick a module or symbol to import |
+| **Paste Last Identifier** | `Alt+V (⌥V on Mac)`            | paste the last imported identifier        |
+| **Open Module**           | `Alt+O (⌥O on Mac)`            | open a module by name, alias or symbol    |
+| **Go To Imports**         | `Ctrl+Shift+Up (⇧⌘⭡ on Mac)`   | move the cursor to the import section     |
+| **Go Back Down**          | `Ctrl+Shift+Down (⇧⌘⭣ on Mac)` | move the cursor back down to the code     |
 
 <br>
 
@@ -59,7 +60,13 @@ File extensions are not included in module name searches.  For example, if you a
 Missing node_modules? - If you open Import Helper while the active editor tab in vscode is not a Javascript, Typescript, or Svelte file, the modules list will
 be missing all of the node_modules your project would normally have access to.  This can't be helped because of the way Import Helper gathers the node_modules to show.  Simply reopen Import Helper while editing a code file to avoid this.
 
-When invoking `Add Import`, the most recently typed in symbol/identifier to the left of the cursor will become the default text for the module search.  If there isn't any symbol, the text of the most recent search is used.  If a partial symbol, symbol alias, module, or module alias was found to the left of the cursor, selecting a matching symbol, symbol alias, module, or module alias will complete the text in the editor.
+Missing mode_modules' sub modules? - for example, `svelte/animations` would normally not be available because vscode's intellisense doesn't offer it as a module to import. Therefore I've added 'svelte' to the `import-helper.node_modules.digDeeper` setting as a default so that all of svelte's sub modules can be found by Import Helper.  You may add any additional modules to the settings list if they are not automatically in Import Helper's list of node_modules.
+
+When invoking `Add Import`, the most recently typed in symbol/identifier to the left of the cursor will become the default text for the module search.  If here isn't any symbol, the text of the most recent search is used.  If a partial symbol, symbol alias, module, or module alias was found to the left of the cursor, selecting a matching symbol, symbol alias, module, or module alias will complete the text in the editor.  Additionally, if some text is highlighted in the editor, it will become the default search text.
+
+### Paste Last Identifier ┊ `Alt+V (⌥V on Mac)`
+
+Pastes the last symbol, alias, or module name that was last imported into your code at the cursor position.
 
 ### Open Module ┊ `Alt+O (⌥O on Mac)`
 
@@ -157,18 +164,25 @@ pastes the last imported symbol, alias or module name into your code
 
 ## Release Notes
 
-### v1.1.2 - (Oct 20, 2022)
+### v1.2.0 - (Feb 14, 2023)
 
-new feature:
+fixed issues:
+* !! important !! I misspelled the setting: `import-helper.extensions.additional`. (I had a t instead of an s in "extensions".) As a result, your additional extensions setting will disappear--please reenter them. Sorry for the inconvenience.
+* adjusted the parsing of `paths` in `tsconfig.json` to better handle paths without asterisks
+
+new features:
 * added the `pasteLastIdentifier` command.  After importing a symbol, or module, activate the Paste
   Last Identifier command `Alt+V (⌥V on Mac)` to paste it into your code.
 
-small improvements:
-* the identifier under or to the left of the cursor is used as default search text. Ex. if the pipe |
-  is the cursor, `os. |` will now pick up "os" as the default search, whereas before the cursor would
-  have to have been touching "os" in order to pick it up.
-* when searching, typing a dot in the text will act as if it is a separate term. ex. `main.test` is
-  the same as `main .test`.
+improvements:
+* smarter automatic selection of the default search identifier based on the cursor position in the editor.
+* search terms with a dot in them now behave like separate terms. ex. `my.test` is now like `my .test`, the same way `my/components` is `my /components`.
+* if the text of a single identifier is selected in the editor, it is used as the default search text.
+* for .svelte modules, multiple script tags are now supported.  Imports are added to the nearest script section above the cursor.
+* `Ctrl+Shift+Up/Down (⇧⌘⭡/⭣ on Mac)` moves between multiple import sections for .svelte modules with multiple script tags.
+* the sort order of search results now gives more weight to recently imported or opened modules and symbols.
+* for some reason, vscode will not offer things like "svelte/animations" through intellisense. IH now checks
+  all of the node_modules' package.json files for more modules to import.
 
 ### v1.1.1 - (Oct 1, 2022)
 
