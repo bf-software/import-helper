@@ -164,7 +164,7 @@ pastes the last imported symbol, alias or module name into your code
 
 ## Release Notes
 
-### v1.2.0 - (Feb 14, 2023)
+### v1.2.0 - (Feb 16, 2023)
 
 fixed issues:
 * !! important !! I misspelled the setting: `import-helper.extensions.additional`. (I had a t instead of an s in "extensions".) As a result, your additional extensions setting will disappear--please reenter them. Sorry for the inconvenience.
