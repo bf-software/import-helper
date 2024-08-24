@@ -38,14 +38,25 @@ export async function getCompletions(startCode: string, endCode:string, tempInse
   let completionPosition = new vscode.Position(tempInsertPosition.line,tempInsertPosition.character + startCode.length);
 
   let completionList: vscode.CompletionList<vscode.CompletionItem>;
+  let isAutoSaveActive:boolean = (vscode.workspace.getConfiguration('files',docs.active!.uri).get<string>('autoSave') ?? 'off') != 'off';
   let wasDirty = docs.active!.vscodeDocument!.isDirty;
+  console.log('wasDirty: '+String(wasDirty));
+  console.log('isAutoSaveActive: '+String(isAutoSaveActive));
   await docs.active!.insertText(tempInsertPos, code, undefined, false);
   try {
     completionList = (await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', docs.active!.uri, completionPosition)) as vscode.CompletionList;
   } finally {
-    // It would be better if we could simply undo the change, but I see no way to send an undo command to a particular URI,
-    // so we have to use revert in order to prevent a non dirty file from becoming dirty as a result of calling this function
-    if (wasDirty) {
+    /*
+       It would be better if we could simply undo the change using the editor's built-in undo.  This
+       would serve two purposes, 1) prevent the pollution of the editor's undo history, and 2)
+       prevent non-modified files from becoming modified, (aka, in vscode terminigogy, prevent
+       non-dirty files from becoming dirty).
+
+       However,  I see no way to send an undo command to a particular URI. So we'll have to accept
+       polluting the undo history, but at least we can prevent a non dirty file from becoming dirty
+       as a result of calling this function.
+    */
+    if (wasDirty || isAutoSaveActive) {
       console.log('insert clear start');
       await docs.active!.insertText(tempInsertPos, '', tempInsertPos+code.length, false);
       console.log('insert clear end');
@@ -53,17 +64,15 @@ export async function getCompletions(startCode: string, endCode:string, tempInse
       console.log('revert start');
       await vscode.commands.executeCommand('workbench.action.files.revert',docs.active!.uri);
       console.log('revert end');
-    }  
+    }
 
     // sanity check - make sure the temporary import code was removed;
     let tempPosText = docs.active!.vscodeDocument?.getText( new vscode.Range( tempInsertPosition, tempInsertPosition.translate(0, startCode.length)) );
     if (tempPosText == startCode) {
-      console.log(`cleared?: nope`);
-      vscode.window.showErrorMessage(`Import Helper wasn't able to remove its temporary import at the top of this module.  Please manually remove the import statement starting with /*~Import Helper...  If this persists, please report the issue.`);
-      throw new Error('getCompletions(): temporary import code was not removed');
+      let errorMessage = `Import Helper wasn't able to remove its temporary import at the top of this module.  Please manually remove the import statement starting with /*~Import Helper...  If this persists, please report the issue.`;
+      vscode.window.showErrorMessage(errorMessage);
+      throw new Error(errorMessage);
     }
-    console.log(`tempPosText: ${tempPosText}`);
-
   }
   return completionList.items;
 }
