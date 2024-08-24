@@ -40,8 +40,6 @@ export async function getCompletions(startCode: string, endCode:string, tempInse
   let completionList: vscode.CompletionList<vscode.CompletionItem>;
   let isAutoSaveActive:boolean = (vscode.workspace.getConfiguration('files',docs.active!.uri).get<string>('autoSave') ?? 'off') != 'off';
   let wasDirty = docs.active!.vscodeDocument!.isDirty;
-  console.log('wasDirty: '+String(wasDirty));
-  console.log('isAutoSaveActive: '+String(isAutoSaveActive));
   await docs.active!.insertText(tempInsertPos, code, undefined, false);
   try {
     completionList = (await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', docs.active!.uri, completionPosition)) as vscode.CompletionList;
@@ -57,20 +55,16 @@ export async function getCompletions(startCode: string, endCode:string, tempInse
        as a result of calling this function.
     */
     if (wasDirty || isAutoSaveActive) {
-      console.log('insert clear start');
       await docs.active!.insertText(tempInsertPos, '', tempInsertPos+code.length, false);
-      console.log('insert clear end');
     } else {
-      console.log('revert start');
       await vscode.commands.executeCommand('workbench.action.files.revert',docs.active!.uri);
-      console.log('revert end');
     }
 
     // sanity check - make sure the temporary import code was removed;
     let tempPosText = docs.active!.vscodeDocument?.getText( new vscode.Range( tempInsertPosition, tempInsertPosition.translate(0, startCode.length)) );
     if (tempPosText == startCode) {
       let errorMessage = `Import Helper wasn't able to remove its temporary import at the top of this module.  Please manually remove the import statement starting with /*~Import Helper...  If this persists, please report the issue.`;
-      vscode.window.showErrorMessage(errorMessage);
+      await vscode.window.showErrorMessage(errorMessage);
       throw new Error(errorMessage);
     }
   }
