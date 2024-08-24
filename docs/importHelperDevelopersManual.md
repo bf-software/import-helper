@@ -185,6 +185,9 @@ Modules offered by the node_modules folder are pulled in by leveraging vscode's 
 
 # To Do
 
+for the next *major* update, don't forget to link in the live common modules from @bf-s/common, and update the
+dependencies to the latest major versions as well.
+
 ## bugs
 
 none
