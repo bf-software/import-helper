@@ -191,11 +191,7 @@ none
 
 ## (easy items)
 
-
-### paths
-
-scan folders pointed to by tsconfig.json --> paths for modules in addition to the [project folder tree / tsconfig.json --> include areas] in case some paths reside outside of the project.
-(although, I'm not sure if TypeScript modules will work if they are located outside of the project -- and not specified in the tsconfig.json --> include setting. I still need to do some investigation there.)
+none
 
 ### (hard items)
 

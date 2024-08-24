@@ -741,10 +741,23 @@ export abstract class FfBaseMap<K,V,F extends FfBaseMapFound<K,V>,FI extends FfB
   /**
    * allows for a mapping between all of the elements in the Map to an array.
    */
-  public map<T>( mapFunc:(value:V, key:K) => T ):T[] {
+  public map<T>( func:(value:V, key:K) => T ):T[] {
     let result:T[] = [];
     for (let [key, value] of this)
-      result.push(mapFunc(value,key))
+      result.push(func(value,key))
+    return result;
+  }
+
+  /**
+   * allows for transformaing a map into an array.  Return non-null, non-undefined results from `func` for inclusion in the result array.
+   */
+  public transform<T>( func:(value:V, key:K) => T|undefined ):T[] {
+    let result:T[] = [];
+    for (let [key, value] of this) {
+      let item:T|undefined = func(value,key);
+      if (typeof item != 'undefined'  && item != null)
+        result.push(item);
+    }
     return result;
   }
 

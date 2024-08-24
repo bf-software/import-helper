@@ -379,7 +379,11 @@ export class EventParams<D,R> {
 const cNone = -1;
 
 /**
- * represents an event attached to any object. [see below for the &lt;generic&gt; type details]
+ * represents an event attached to any object.
+ *
+ * Generic params: `<D, R>`
+ * @type D is the type of data passed to each listener
+ * @type R is the type of the return data coming from listeners
  *
  * Unlike other event systems, this does not require that the class wanting to
  * offer events be a descendant of a specific event class.  Each `Event` can host 0 or more listeners.
@@ -409,10 +413,6 @@ const cNone = -1;
  * other listeners from being called by using the `stopCueing()` method.  The listener can also request
  * that the event itself be canceled by calling `cancelEvent()`.  It then will be up to the class hosting
  * the event to heed the cancellation or not.
- *
- * Generic params: <D,R>
- * @type D is the type of data passed to each listener
- * @type R is the type of the return data coming from listeners
  */
 export class Event<D = undefined,R = undefined> {
   private channelEvent = new ChannelEvent<number,D,R>();

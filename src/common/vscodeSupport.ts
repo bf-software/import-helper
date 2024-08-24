@@ -31,22 +31,28 @@ export function getWorkspaceFolders():string[] {
  * await getCompletions( 'import {' , '} from "process";' );
  */
 export async function getCompletions(startCode: string, endCode:string, tempInsertPos:number) {
+  let ihToken = '/*~Import Helper~*/ ';
+  startCode = ihToken + startCode;
   let code = startCode + endCode;
-  let completionPosition = docs.active!.posToPosition(tempInsertPos);
-  completionPosition = new vscode.Position(completionPosition.line,completionPosition.character + startCode.length);
+  let tempInsertPosition = docs.active!.posToPosition(tempInsertPos);
+  let completionPosition = new vscode.Position(tempInsertPosition.line,tempInsertPosition.character + startCode.length);
 
   let completionList: vscode.CompletionList<vscode.CompletionItem>;
   let wasDirty = docs.active!.vscodeDocument!.isDirty;
-  docs.active!.insertText(tempInsertPos, code, undefined, false);
+  await docs.active!.insertText(tempInsertPos, code, undefined, false);
   try {
     completionList = (await vscode.commands.executeCommand('vscode.executeCompletionItemProvider', docs.active!.uri, completionPosition)) as vscode.CompletionList;
   } finally {
     // It would be better if we could simply undo the change, but I see no way to send an undo command to a particular URI,
     // so we have to use revert in order to prevent a non dirty file from becoming dirty as a result of calling this function
     if (wasDirty) {
-      docs.active!.insertText(tempInsertPos, '', tempInsertPos+code.length, false);
+      await docs.active!.insertText(tempInsertPos, '', tempInsertPos+code.length, false);
     } else
       await vscode.commands.executeCommand('workbench.action.files.revert',docs.active!.uri);
+
+    // sanity check - make sure the temporary import code was removed;
+    if (docs.active!.vscodeDocument?.getText( new vscode.Range( tempInsertPosition, tempInsertPosition.translate(0, startCode.length)) ) == startCode)
+      throw new Error('getCompletions(): temporary import code was not removed');
   }
   return completionList.items;
 }

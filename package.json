@@ -3,17 +3,22 @@
 	"publisher": "bf-s",
 	"displayName": "Import Helper",
 	"description": "quickly import modules, aliases, and symbols via a search (for typescript, javascript, and svelte)",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"icon": "out-bundle/images/BF-Software/icon.png",
 	"engines": {
-		"vscode": "^1.64.0"
+		"vscode": "^1.92.0"
+	},
+	"homepage": "https://bf-software.com/",
+	"bugs": {
+		"url": "https://github.com/bf-software/import-helper/issues"
 	},
 	"repository": {
 		"url": "https://github.com/bf-software/import-helper/",
 		"type": "git"
 	},
 	"categories": [
-		"Programming Languages"
+		"Programming Languages",
+		"Other"
 	],
 	"keywords": [
 		"javascript",
@@ -56,7 +61,7 @@
 					"scope": "window",
 					"default": "",
 					"markdownDescription": "List additional extensions to allow in import statements. For example, React with Webpack allows `css` files to be imported directly into your code. (format: .ext1, .ext2, etc...)"
-        }
+				}
 			}
 		},
 		"commands": [
@@ -125,7 +130,7 @@
 	"scripts": {
 		"dev-build": "webpack --config ./webpack.config.mjs | less -f -r",
 		"dev-watch": "webpack --config ./webpack.config.mjs --watch",
-		"prod-build-deploy": "cross-env NODE_ENV=production webpack --config ./webpack.config.mjs && mkdirp ./deploy && vsce package --no-dependencies --out ./deploy",
+		"prod-build": "cross-env NODE_ENV=production webpack --config ./webpack.config.mjs && mkdirp ./deploy && vsce package --no-dependencies --out ./deploy",
 		"prod-map-explorer-list": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map --tsv",
 		"prod-map-explorer-html": "source-map-explorer ./out-bundle/extensionEntryPoint.js ./out-bundle/extensionEntryPoint.js.map"
 	},
@@ -140,10 +145,10 @@
 	"devDependencies": {
 		"@types/glob": "^7.1.4",
 		"@types/node": "^16.11.7",
-		"@types/semver": "^7.3.9",
-		"@types/strip-comments": "^2.0.1",
-		"@types/vscode": "^1.64.0",
-		"@vscode/codicons": "^0.0.32",
+		"@types/semver": "^7.5.8",
+		"@types/strip-comments": "^2.0.4",
+		"@types/vscode": "^1.92.0",
+		"@vscode/codicons": "^0.0.36",
 		"clean-terminal-webpack-plugin": "^3.0.0",
 		"clean-webpack-plugin": "^4.0.0",
 		"copy-webpack-plugin": "^10.1.0",
@@ -151,19 +156,19 @@
 		"glob": "^7.2.0",
 		"mkdirp": "^1.0.4",
 		"source-map-explorer": "^2.5.2",
-		"ts-loader": "^9.2.6",
-		"vsce": "^2.3.0",
-		"webpack": "^5.64.0",
+		"ts-loader": "^9.5.1",
+		"webpack": "^5.94.0",
 		"webpack-cli": "^4.9.1"
 	},
 	"dependencies-comments": {
 		"chalk": "can't use v5.0.0 yet because it uses `import from 'node:process';` which vscode 1.63.0 can't handle because of the `node:`."
 	},
 	"dependencies": {
+		"@vscode/vsce": "^3.0.0",
 		"chalk": "^4.1.2",
-		"semver": "^7.3.5",
-		"source-map-js": "^1.0.1",
+		"semver": "^7.6.3",
+		"source-map-js": "^1.2.0",
 		"strip-comments": "^2.0.1",
-		"typescript": "^4.4.3"
+		"typescript": "^5.5.4"
 	}
 }

@@ -238,7 +238,7 @@ export class ProjectModuleResolver {
 
 
   /**
-   * looks at package.json's "typings" or "types", "typesVersions", "main", and "exports" for the actual source and type files that represent
+   * looks at package.json's "typings" or "types", "typesVersions", "jsnext:main", "main", and "exports" for the actual source and type files that represent
    * the main entry points into the package.
    */
   private async addFilesFromPackageJson(packageJsonFile:string) {
@@ -302,6 +302,16 @@ export class ProjectModuleResolver {
       let possibleMainFile = ns.resolveFile(packagePath, relativeMainFile);
       if (await ns.fileExists(possibleMainFile))
         this.projectFileMap.add(possibleMainFile, packageLocationInfo+'main');
+    }
+
+    // check for jsnext:main
+    relativeMainFile = '';
+    if (typeof packageObject['jsnext:main'] == 'string')
+      relativeMainFile = packageObject['jsnext:main'];
+    if (relativeMainFile != '') {
+      let possibleMainFile = ns.resolveFile(packagePath, relativeMainFile);
+      if (await ns.fileExists(possibleMainFile))
+        this.projectFileMap.add(possibleMainFile, packageLocationInfo+'jsnext:main');
     }
 
     // check for exports

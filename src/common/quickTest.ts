@@ -660,6 +660,10 @@ class ValueTester {
       return 'undefined';
     if (value == null)
       return 'null';
+    // if (typeof value == 'object') {       Quicktest shouldn't know about IntCurrency
+    //   if (value instanceof IntCurrency)
+    //     return value.asString;
+    // }
     return JSON.stringify(value,undefined,2);
   }
 
@@ -742,6 +746,24 @@ class ValueTester {
     if (! (this.testValue > expectedValue) )
       this.valueError('',this.testValue,expectedValue,'should be greater than');
   }
+
+  public shouldBeLessThan(expectedValue: any) {
+    if (! (this.testValue < expectedValue) )
+      this.valueError('',this.testValue,expectedValue,'should be less than');
+  }
+
+  public shouldBeGreaterThanOrEqualTo(expectedValue: any) {
+    if (! (this.testValue >= expectedValue) )
+      this.valueError('',this.testValue,expectedValue,'should be greater than or equal to');
+  }
+
+  public shouldBeLessThanOrEqualTo(expectedValue: any) {
+    if (! (this.testValue <= expectedValue) )
+      this.valueError('',this.testValue,expectedValue,'should be less than or equal to');
+  }
+
+
+
 
 
   public async shouldThrowError(containing:string) {

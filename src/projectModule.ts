@@ -343,12 +343,11 @@ export class SourceModules extends cs.FfMap<string,SourceModule> {
 
     // note: any changes to the code that limits the files included should also be reflected in Project.moduleContentChanged
     let allExtensions = ss.commas(...as.cCodeExtensions,...as.additionalExtensions);
-    // note: vscode.workspace.findFiles takes care of excluding the non-root paths.
+    // note: vscode.workspace.findFiles() takes care of excluding the non-root paths via it's exclude param, but paths like `/from/the/root` have to be removed after this call
     let foundURIs = await vscode.workspace.findFiles('**/'+vs.getWorkspaceRelativePath(this.project.projectPath)+'**/*{'+allExtensions+'}', '**/{node_modules'+ss.prefix(',',ss.commas(this.excludeNonRootPaths))+'}/**');
     for (let uri of foundURIs)
       if (! this.isExcludedByRootPaths( ss.internalizeFile(uri.fsPath) ) ) // <-- exclude the root paths
         this.addByModuleFile( ss.internalizeFile(uri.fsPath ) );
-
   }
 
 }

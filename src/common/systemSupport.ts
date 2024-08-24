@@ -1495,6 +1495,15 @@ export function evolve<T>(iterable:Iterable<any>, result:T, callback:(resultCont
 	return result;
 }
 
+export async function findAsync<T>(iterable: Iterable<T>, func: (t: T) => Promise<boolean>): Promise<T | undefined> {
+  for (let t of iterable) {
+    if (await func(t)) {
+      return t;
+    }
+  }
+  return undefined;
+}
+
 export function hasItem(iterable:Iterable<any>, searchItem:any, caseSensitive = false) {
   for (let item of iterable) {
     if (caseSensitive || typeof searchItem != 'string') {
