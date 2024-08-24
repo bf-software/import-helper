@@ -46,13 +46,24 @@ export async function getCompletions(startCode: string, endCode:string, tempInse
     // It would be better if we could simply undo the change, but I see no way to send an undo command to a particular URI,
     // so we have to use revert in order to prevent a non dirty file from becoming dirty as a result of calling this function
     if (wasDirty) {
+      console.log('insert clear start');
       await docs.active!.insertText(tempInsertPos, '', tempInsertPos+code.length, false);
-    } else
+      console.log('insert clear end');
+    } else {
+      console.log('revert start');
       await vscode.commands.executeCommand('workbench.action.files.revert',docs.active!.uri);
+      console.log('revert end');
+    }  
 
     // sanity check - make sure the temporary import code was removed;
-    if (docs.active!.vscodeDocument?.getText( new vscode.Range( tempInsertPosition, tempInsertPosition.translate(0, startCode.length)) ) == startCode)
+    let tempPosText = docs.active!.vscodeDocument?.getText( new vscode.Range( tempInsertPosition, tempInsertPosition.translate(0, startCode.length)) );
+    if (tempPosText == startCode) {
+      console.log(`cleared?: nope`);
+      vscode.window.showErrorMessage(`Import Helper wasn't able to remove its temporary import at the top of this module.  Please manually remove the import statement starting with /*~Import Helper...  If this persists, please report the issue.`);
       throw new Error('getCompletions(): temporary import code was not removed');
+    }
+    console.log(`tempPosText: ${tempPosText}`);
+
   }
   return completionList.items;
 }

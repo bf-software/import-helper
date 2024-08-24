@@ -358,7 +358,7 @@ export class ImportHelperUi {
     if (! this.moduleQuickPick)
       return;
     this.moduleQuickPick.keepScrollPosition = keepScrollPosition;
-    let lastHighlightedQpi = this.moduleQuickPick!.activeItems[0]; //<-- save this so we can re-highlight after search
+    let lastHighlightedQpi:qpi.ProjectModuleQuickPickItem | qpi.SeparatorItem | undefined = this.moduleQuickPick!.activeItems[0]; //<-- save this so we can re-highlight after search
 
     // do the actual search
     this.api.searchForModules(this.moduleQuickPick!.value);
@@ -375,7 +375,8 @@ export class ImportHelperUi {
       this.isFreshModuleSearch = false;
     } else if (!selectTopItem) {
       // position the active item at the one that was last highlighted during this search session, if it's there
-      highlightThisQpi = this.moduleQuickPick!.itemByQpi(lastHighlightedQpi);
+      if (lastHighlightedQpi)
+        highlightThisQpi = this.moduleQuickPick!.itemByQpi(lastHighlightedQpi);
     }
 
     // position the current highlighted item
